@@ -33,6 +33,14 @@
 
 For each wave, in order:
 
+**0. Record wave start**
+
+```bash
+date "+%H:%M:%S"
+```
+
+Store this as the wave's `started` time. Never estimate it later.
+
 **1. Fire Mentor**
 
 For the first wave (new app):
@@ -84,7 +92,13 @@ Publishing is a human decision. Prepare the call, report it, wait for confirmati
 
 After publish, verify with `env_app` that the new revision is live.
 
-**5. Ask about tests**
+**5. Record wave end and ask about tests**
+
+```bash
+date "+%H:%M:%S"
+```
+
+Store this as the wave's `finished` time. Then ask:
 
 Report: "Wave N is published. Do you want to run the E2E tests now?"
 
@@ -133,7 +147,7 @@ All execution details live in `execution-log.md` (created alongside this file).
 After each wave: append one entry. Format:
 
 ```
-## W<N> — <name>
+## W<N> — <name>  |  <started> → <finished>
 - Turn <n>: <runId short>, <HH:MM>→<HH:MM> (<Xm>), retries=<N> → applied
 - [Deviation: <what> → <how resolved>]
 - [Fix turn: <runId short>, <Xm>, retries=<N> → <what was fixed>]

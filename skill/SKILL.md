@@ -260,11 +260,22 @@ Started: <!-- fill with `date "+%Y-%m-%dT%H-%M-%S"` at first session -->
 ---
 ```
 
-After each wave completes (gate passed, published, tests decided), append one
-entry in this exact format — nothing more:
+At the **start of each wave** (before firing Mentor), run:
+```bash
+date "+%H:%M:%S"
+```
+Store the result as `<started>`.
+
+At the **end of each wave** (after gate passed and tests decision made), run:
+```bash
+date "+%H:%M:%S"
+```
+Store the result as `<finished>`.
+
+Then append one entry in this exact format — nothing more:
 
 ```markdown
-## W<N> — <name>
+## W<N> — <name>  |  <started> → <finished>
 - Turn <n>: <runId short>, <HH:MM>→<HH:MM> (<Xm>), retries=<N> → <applied|failed|split>
 - [Deviation: <what happened> → <how resolved>]
 - [Fix turn: <runId short>, <Xm>, retries=<N> → <what was fixed>]
