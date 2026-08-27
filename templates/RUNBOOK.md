@@ -69,7 +69,8 @@ Always prepend these guardrails to the prompt:
 
 **2. Poll**
 
-Honor `pollAfterMs`. Do not poll in a tight loop.
+Poll every **60 seconds minimum**, regardless of what `pollAfterMs` suggests.
+Shorter intervals generate unnecessary calls without producing new information.
 Stop on `succeeded`, `failed`, or `cancelled`.
 A run still active past ~30 minutes is stuck — cancel and split at the wave's designated split point.
 
@@ -170,7 +171,7 @@ Write the entry once per wave, when the wave closes.
 - Blame Context Service lag without checking the row timestamp first.
 - Fire the next wave on a failed gate or red tests.
 - Loosen a test to make a wave pass — fix the app or amend the spec and the test together.
-- Poll in a tight loop. Honor `pollAfterMs`.
+- Poll faster than every 60 seconds — each poll consumes a model turn.
 - Call `eSpace.AddDependency` — known broken. Surface needed references for manual wiring.
 - Create placeholder screens for a future wave's links.
 - Put a hex literal in a screen or block.
