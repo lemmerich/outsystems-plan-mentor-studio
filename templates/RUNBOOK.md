@@ -17,6 +17,17 @@
 
 ---
 
+## Current wave
+
+**→ W___ — ___**  *(update this line each time you start a new wave)*
+
+This is the resumption pointer. When returning to an interrupted session:
+1. Read this line to know where to pick up.
+2. Check `execution-log.md` for the last completed entry.
+3. Re-resolve tenant and app key with `auth_status` + `app_list` before firing anything.
+
+---
+
 ## Wave plan
 
 | Wave | Name | Proves | Scope | Status |
@@ -33,7 +44,16 @@
 
 For each wave, in order:
 
-**0. Record wave start**
+**0. Update resumption pointer and record wave start**
+
+Update the `## Current wave` line at the top of this file to the wave you
+are about to start. This is the first thing a new session reads to resume.
+
+```
+**→ W<N> — <name>**
+```
+
+Then record the start time:
 
 ```bash
 date "+%H:%M:%S"
@@ -60,12 +80,26 @@ mentor_start(
 ```
 
 Always prepend these guardrails to the prompt:
-- No hex literals — every color is a theme variable
-- Use verified OutSystems UI block names only — no bare HTML
-- ODC terminology only (no "Service Studio", no "eSpace")
-- Section "Out of scope" is absolute
-- Never call `eSpace.AddDependency`
-- Add every `data-test` attribute listed in the spec, spelled exactly
+- No hex literals — every color is a theme variable.
+- **Declaring a CSS variable is not the same as applying it.** The theme
+  stylesheet must also set `background-color`, `color`, and `border-color`
+  on `.form-control`, `.dropdown-display`, `input`, `select`, `textarea`,
+  and the Upload widget's control — with enough CSS specificity to override
+  browser UA defaults. Without this, every form input renders white on a
+  dark theme even when the token is correctly defined.
+- **Forms use a multi-column grid. Never one field per line.** Fields that
+  belong together share a row. Use `Columns2` / `Columns3` /
+  `ColumnsSmallLeft` / `ColumnsSmallRight` blocks. The default vertical
+  stack from the Form widget is not acceptable.
+- **Action flows must be readable top-to-bottom without zooming.** Do not
+  stack assignments, conditions, or calls on the same coordinates. Space
+  elements so each step is individually selectable and its label is fully
+  visible. Overlapping nodes are a defect.
+- Use verified OutSystems UI block names only — no bare HTML.
+- ODC terminology only (no "Service Studio", no "eSpace").
+- Section "Out of scope" is absolute.
+- Never call `eSpace.AddDependency`.
+- Add every `data-test` attribute listed in the spec, spelled exactly.
 
 **2. Poll**
 

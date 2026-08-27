@@ -1,5 +1,6 @@
 ---
 name: outsystems-plan
+version: "0.1.2"
 description: >
   Guides you from a blank folder to a complete OutSystems build plan through
   a short interactive interview. Reads your spec and reference screens, proposes
@@ -305,13 +306,50 @@ happened. A clean wave is four lines. A messy wave names what was messy.
 The RUNBOOK is the operator's guide. It is generated once at plan creation and
 updated as waves execute. It contains:
 
-1. **Project facts** — tenant, app name, app key (resolved at session start, never hardcoded)
-2. **Wave table** — name, scope summary, committed vs deferred, status
-3. **Per-wave procedure** — fire Mentor → poll → static gate → publish → ask about tests
-4. **Static gate checklist** — entity count, action count, screen count, zero hex literals, no unauthorized roles
-5. **Failure playbook** — what to do when things go wrong (see template)
-6. **Timing log** — one row per milestone, cumulative across waves
-7. **Never list** — absolute prohibitions
+1. **Resumption pointer** — `## Current wave` updated to the active wave before each fire
+2. **Project facts** — tenant, app name, app key (resolved at session start, never hardcoded)
+3. **Wave table** — name, scope summary, committed vs deferred, status
+4. **Per-wave procedure** — fire Mentor → poll → static gate → publish → ask about tests
+5. **Mentor prompt guardrails** — prepended to every Mentor prompt, every wave
+6. **Static gate checklist** — entity count, action count, screen count, zero hex literals, no unauthorized roles
+7. **Failure playbook** — what to do when things go wrong
+8. **Timing log** — one row per milestone, cumulative across waves
+9. **Never list** — absolute prohibitions
+
+### Mentor prompt guardrails
+
+Every Mentor prompt, every wave, must be prepended with these guardrails
+verbatim. Write them into the RUNBOOK under a `## Prompt guardrails` section
+so they are never forgotten:
+
+```
+GUARDRAILS (apply to every screen and action in this wave):
+
+1. No hex literals. Every color must be a theme variable.
+
+2. CSS token declared ≠ CSS token applied. After declaring variables in the
+   theme stylesheet, you must also set `background-color`, `color`, and
+   `border-color` on `.form-control`, `.dropdown-display`, `input`, `select`,
+   `textarea`, and the Upload widget's control element, with enough specificity
+   to override browser UA defaults. Without this step, form inputs render with
+   a white background even when the variable is correctly defined.
+
+3. Forms use a multi-column grid — never one field per line. Group related
+   fields on the same row. Use `Columns2`, `Columns3`, `ColumnsSmallLeft`, or
+   `ColumnsSmallRight` blocks. The default vertical stack from the Form widget
+   is not acceptable.
+
+4. Action flows must be readable top-to-bottom without zooming. Do not place
+   two assignments, conditions, or calls at the same vertical coordinate.
+   Space each node so its label is fully visible and individually selectable.
+   Overlapping nodes are a defect, not a style choice.
+
+5. Use verified OutSystems UI block names only — no bare HTML elements.
+
+6. ODC terminology only: no "Service Studio", no "eSpace".
+
+7. Add every `data-test` attribute listed in the wave spec, spelled exactly.
+```
 
 ---
 
