@@ -1,0 +1,14 @@
+{
+  "name": "e2e-tests",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:wave": "playwright test tests/w$WAVE.spec.ts",
+    "test:ui": "playwright test --ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.44.0",
+    "dotenv": "^16.0.0",
+    "typescript": "^5.0.0"
+  }
+}
