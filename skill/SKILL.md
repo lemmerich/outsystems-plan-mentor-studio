@@ -1,16 +1,18 @@
 ---
 name: outsystems-plan
-version: "0.1.2"
+version: "0.5.0"
 description: >
   Guides you from a blank folder to a complete OutSystems build plan through
   a short interactive interview. Reads your spec and reference screens, proposes
   a wave breakdown where every wave ends with something clickable and visually
   verifiable, and generates RUNBOOK.md + one spec file per wave + Playwright
-  test scaffolding. Use when starting a new OutSystems project or planning a
-  new feature set: "plan this project", "quebrar em ondas", "criar plano a
-  partir do SDD", "start planning".
+  test scaffolding. Every wave is prototyped in HTML and approved BEFORE Mentor
+  ever touches it — the prototype, not ASCII art, is the screen's source of
+  truth. Use when starting a new OutSystems project or planning a new feature
+  set: "plan this project", "quebrar em ondas", "criar plano a partir do SDD",
+  "start planning".
 license: MIT
-allowed-tools: AskUserQuestion Bash Read Write Edit
+allowed-tools: AskUserQuestion Bash Read Write Edit Artifact
 ---
 
 # OutSystems Plan — interactive planning from spec to waves
@@ -54,6 +56,135 @@ Each of these is independently observable. Each can be tested with a single
 Playwright scenario. Each can be approved or rejected on its own.
 
 **A wave that only creates entities with no screen is never valid.**
+
+---
+
+## The prototype-first principle
+
+**ASCII layout diagrams in a spec are not a sufficient reference for Mentor.**
+In practice Mentor follows a written description of field grouping loosely —
+fields that should sit on the same row end up one-per-line, and screens that
+were never explicitly speced (a detail view reached by clicking a list row,
+for instance) simply don't get built. Text under-specifies layout; a picture
+doesn't.
+
+So for every wave that touches UI, the sequence is always:
+
+```
+1. Cut the wave (functional slice — Step 2 below)
+2. Prototype it in HTML (this step) — build or evolve the artifact, get it approved
+3. Derive the wave spec's Screen layout section FROM the approved prototype
+4. Execute the wave (RUNBOOK Step — fire Mentor with the prototype screenshot attached)
+5. Verify the published result against the prototype, not just against the spec text
+6. Any change made to reconcile — in either direction — gets written back:
+   prototype edits go into the spec; implementation constraints Mentor surfaces
+   go back into the prototype before the next wave reuses that pattern
+```
+
+**One cumulative prototype, not one per wave.** Build a single HTML file
+(e.g. `prototipo-<projectname>.html`) with a lightweight tab/nav switcher
+between screens, and evolve it wave over wave — republishing the same
+Artifact URL each time (see Artifact tool: pass `url` on subsequent
+publishes to update in place rather than creating a new page). This keeps
+one link the user can always open to see "what does the app look like right
+now, across every wave so far." Each new wave adds its screen(s) to the same
+file; screens from earlier waves stay in it as an always-current reference,
+not a throwaway mockup.
+
+**How to prototype a wave:**
+
+1. Base the visual system on whatever reference material Question 3
+   provided (colors, spacing, component patterns). If nothing was provided,
+   propose a palette and ask the user to approve it before building more
+   than one screen on top of it — a theme decision made silently in HTML
+   is a theme decision the user didn't actually make.
+2. Build with real interactivity where it clarifies behavior: list rows
+   that navigate to a detail view on click, a form that validates and
+   inserts a new row into the list, a date picker instead of free text —
+   anything that would otherwise be ambiguous from a static picture. This
+   is cheap in HTML/JS and removes an entire class of "I assumed X" gaps.
+3. Publish as an Artifact and iterate with the user in the same
+   conversation turn — this is a fast, cheap loop; do not wait for a
+   "final" version before showing it. Treat early rejection as the system
+   working, not as rework.
+4. Only once the user explicitly approves a screen does it graduate into
+   that wave's spec.
+
+**A prototype screenshot transfers color, typography, and field grouping
+faithfully. It systematically fails to transfer box model** — max-width
+constraints, block-vs-inline stacking, and flex shrink behavior
+(`min-width: 0`) are invisible or ambiguous in a static image, and Mentor
+defaults every OutSystems UI container to fill-parent unless told otherwise
+in words. Do not rely on "attach the screenshot" alone and expect fidelity;
+before writing each wave's Mentor prompt, read the prototype's own CSS for
+that screen and pull out these facts explicitly (see guardrail 9 below).
+Skipping this step is what produces the "looks right, then a week later
+someone compares it pixel-by-pixel and finds five divergences" loop — cheap
+to prevent up front, expensive to find one bug at a time after publish.
+
+**Before writing any wave's Screen layout section, read
+[`references/prototype-to-widgets.md`](references/prototype-to-widgets.md)**
+— a conversion guide from recurring real bugs (title/subtitle landing in
+different layout placeholders, fill-parent-by-default containers, flex
+`min-width` shrink behavior, `Adaptive` margin misalignment, reserved theme
+class names, canonical vs. invented CSS variables, and when a pattern like
+list→detail is already a built-in OutSystems UI block). It points into
+`outsystems-design-to-app`'s deeper reference library for anything beyond
+these recurring cases.
+
+**Cross-wave decisions surfaced by the prototype** (a theme change, a screen
+that turns out to already belong in a different wave, a UX pattern like
+list→detail navigation) are still plan-level decisions — confirm scope with
+the user (`AskUserQuestion`) before rewriting specs for waves other than the
+one currently being planned, the same way any other plan revision is
+confirmed.
+
+---
+
+## The wave execution cycle
+
+Executing a wave is not "fire Mentor, publish, done" — it is a fixed
+six-step loop, and it applies whether the wave is brand new or a fix on top
+of one already published. **Skip a step only when the user explicitly says
+to; never skip a step silently.**
+
+```
+1. Prototype    — build or evolve the screen(s) in the living prototype (HTML)
+2. Approve      — get the user's explicit sign-off on the prototype change
+3. Execute      — update the wave spec from the approved prototype, then
+                  fire Mentor with box-model facts in the prompt; publish
+4. Compare      — open the published screen and the approved prototype
+                  side by side; list every visual/behavioral difference —
+                  don't stop at the first one found
+5. Reconcile    — for each difference: fix the app (usually), or fix the
+                  prototype/spec if the difference was the prototype's own
+                  oversight (see the prototype-first principle) — then
+                  re-publish and go back to step 4 until there's nothing left
+6. Test         — update/add E2E test cases for what changed, then ask the
+                  user whether to run them now (never auto-run — see the
+                  RUNBOOK's per-wave procedure)
+```
+
+**After every step completes, state what just finished and name the next
+step in the cycle before doing anything else** — even when the user's last
+message already tells you to continue. This is not optional narration: the
+whole point of a fixed cycle is that neither the model nor the person
+reviewing it has to hold "what comes next" in their head. A short line is
+enough: *"Prototype approved — updating spec-w5.md and firing Mentor next."*
+If the user redirects mid-cycle (a different bug to chase, a question), pick
+the cycle back up at the step you were on rather than silently dropping it.
+
+**The user can jump straight to any step** ("just fix the app, skip the
+prototype" / "don't bother re-running tests") — that's a valid shortcut, not
+a violation of the cycle. What breaks the cycle is *not naming* the skipped
+step, so a shortcut silently becomes the new unstated default for every wave
+after it.
+
+This cycle is why `RUNBOOK.md`'s per-wave procedure (Step 6 below) is
+written as prototype → approve → spec → Mentor → publish → compare against
+prototype → tests, not as a single "build the wave" instruction — and it is
+why the static gate includes "screen matches the approved prototype
+screenshot" as a checklist item, not just "matches the spec text."
 
 ---
 
@@ -191,9 +322,28 @@ One sentence. What can a human do and verify after this wave is published?
 - No data model changes: [yes/no]
 
 ### Screen layout
-[Describe the screen layout in plain terms or ASCII. Reference design tokens
-by name. Explicitly say how form fields are grouped — e.g., "date and code
-on the same row, never one field per line".]
+**Referência visual aprovada**: link do protótipo HTML (Artifact URL) +
+qual aba/estado dele é esta tela. This is the primary reference — attach a
+screenshot of it to the Mentor prompt (RUNBOOK Step). An ASCII sketch may
+follow as a quick summary of field grouping, but it is never the sole
+reference; if a prototype does not exist yet for this screen, one must be
+built and approved (see "The prototype-first principle") before this
+section is written. Explicitly say how form fields are grouped — e.g.,
+"date and code on the same row, never one field per line" — and call out
+any gate-worthy visual rule the prototype embodies (grid layout, which
+fields span full width and why, native input types like date pickers).
+
+**Box model facts (mandatory, read from the prototype's CSS, not from the
+image)**: for every container that must not fill-parent, state its
+max-width/width in px explicitly (e.g. "the form card caps at 640px — it
+must NOT stretch to the content area's full width, which is a different,
+larger number"); for every pair of elements that must stack as separate
+blocks, say so explicitly even if it looks obvious in the screenshot; for
+any flex child that must shrink below its content's natural width, name the
+container and require `min-width: 0`. These three facts do not survive a
+"here's a screenshot, match it" prompt — see "The prototype-first
+principle" above and `references/prototype-to-widgets.md` for the recurring
+failure modes behind each of these three facts.
 
 ### Actions
 [For each action: name, inputs, outputs, exact error messages verbatim]
@@ -225,6 +375,7 @@ Key rules:
 
 - `playwright.config.ts` must set `testIdAttribute: 'data-test'` — Playwright's default is `data-testid` which OutSystems never sets.
 - `fullyParallel: false`, `workers: 1` — waves share one environment.
+- `reporter` must include `['html', { open: 'never', outputFolder: 'playwright-report' }]` alongside `['list']` — `list` alone only prints to the terminal, and terminal output is not evidence once the turn scrolls away. The HTML report (with screenshots and traces on failure) is what makes "5 passed" a checkable claim instead of a summary someone has to trust. It's overwritten by the next run of the same project — if the user wants a specific run preserved across future runs, that's a separate ask (copy the folder, or init git and commit it), not something to assume.
 - All locators and all verbatim messages live in `support/selectors.ts`. A UI rename is one edit.
 - Prefer accessible role + visible text. Never target generated OutSystems DOM ids — they change on republish.
 - For negative RBAC: assert controls are **absent**, not disabled.
@@ -245,6 +396,14 @@ implemented and published, ask:
 > the next wave first?"
 
 Never auto-run tests. The user decides when.
+
+**After running tests, record the evidence, not just the tally.** In the
+wave's `logs/wN.md`, write the actual pass/fail count AND the path to the
+generated `playwright-report/index.html` for that run (note explicitly that
+it is overwritten by the next run in the same project — this is expected,
+not a gap, as long as it's stated). A bare "3/3 passed" sentence with
+nothing backing it is exactly the kind of claim that erodes trust once
+someone asks "how do you know" — see the wave execution cycle's Test step.
 
 ---
 
@@ -309,12 +468,26 @@ updated as waves execute. It contains:
 1. **Resumption pointer** — `## Current wave` updated to the active wave before each fire
 2. **Project facts** — tenant, app name, app key (resolved at session start, never hardcoded)
 3. **Wave table** — name, scope summary, committed vs deferred, status
-4. **Per-wave procedure** — fire Mentor → poll → static gate → publish → ask about tests
-5. **Mentor prompt guardrails** — prepended to every Mentor prompt, every wave
-6. **Static gate checklist** — entity count, action count, screen count, zero hex literals, no unauthorized roles
-7. **Failure playbook** — what to do when things go wrong
-8. **Timing log** — one row per milestone, cumulative across waves
-9. **Never list** — absolute prohibitions
+4. **Living prototype pointer** — the Artifact URL of the cumulative HTML
+   prototype (see "The prototype-first principle"), plus a one-line rule:
+   no wave's Mentor prompt fires without an approved prototype screen for
+   it, and no prototype change ships without being written back into the
+   wave's spec.
+5. **Per-wave procedure** — prototype/evolve the wave's screen(s) in the
+   living prototype → get user approval → update `spec-wN.md` Screen
+   layout from the approved prototype → fire Mentor with a screenshot of
+   the approved screen attached (in addition to the theme-continuity line)
+   → poll (always drain-and-pause: poll immediately while the cursor is
+   draining new events, then pause ~30-60s once drained and not yet
+   terminal — never fixed-interval/500ms polling; see
+   `outsystems-mentor-polling-behavior`) → static gate, including a visual
+   diff against the prototype (not just the checklist) → publish → ask
+   about tests
+6. **Mentor prompt guardrails** — prepended to every Mentor prompt, every wave
+7. **Static gate checklist** — entity count, action count, screen count, zero hex literals, no unauthorized roles, **screen matches the approved prototype screenshot** (layout, grouping, negrito/weight, dynamic vs static text — verify by opening the published screen and comparing, not by re-reading the spec)
+8. **Failure playbook** — what to do when things go wrong
+9. **Timing log** — one row per milestone, cumulative across waves
+10. **Never list** — absolute prohibitions
 
 ### Mentor prompt guardrails
 
@@ -349,12 +522,40 @@ GUARDRAILS (apply to every screen and action in this wave):
 6. ODC terminology only: no "Service Studio", no "eSpace".
 
 7. Add every `data-test` attribute listed in the wave spec, spelled exactly.
+
+8. A screenshot of the approved prototype is attached to this prompt as the
+   primary layout reference. Match it exactly — including whether elements
+   stack on separate lines (block) or share one line (inline/flex-row).
+   Don't infer structure from the wording of the spec text; read it off the
+   image.
+
+9. A screenshot alone under-specifies box model. It shows what a container's
+   size happens to be at one viewport, not whether that size is a hard
+   constraint or incidental — and it cannot show `min-width: 0` shrink
+   behavior on a flex child at all, since that only manifests as a bug once
+   text is long enough to wrap. Every wave's Mentor prompt must state, in
+   words, alongside the screenshot: (a) any element that must NOT fill its
+   parent's width — name it and give the exact max-width/width in px (every
+   OutSystems UI container defaults to fill-parent; "don't stretch" is
+   always opt-in, never assume it transfers from the picture), (b) which
+   sibling elements must stack as separate blocks vs. share a row, and
+   (c) any flex child that must shrink below its content width (name the
+   container, require `min-width: 0` explicitly) — this is invisible in a
+   screenshot and easy to skip. Extract these facts from the prototype's own
+   CSS while writing the wave spec (Step 3's Screen layout section), not
+   from eyeballing the rendered image a second time.
 ```
 
 ---
 
 ## Checklist before handing the plan over
 
+- [ ] Every UI wave has an approved prototype screen, and its spec's Screen
+      layout section was derived from that approved screen, not written first
+- [ ] After publish, the live screen was compared against the prototype
+      screenshot directly (open both side by side) — not just checked
+      against the spec's prose description, which is where subtle misses
+      (stacking vs inline, font weight, static vs dynamic text) slip through
 - [ ] Every wave ends with something clickable — no entity-only waves
 - [ ] Every wave spec has a "What this wave proves" sentence
 - [ ] Running totals are consistent across all specs and RUNBOOK
