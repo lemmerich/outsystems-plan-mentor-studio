@@ -1,6 +1,6 @@
 ---
 name: outsystems-plan
-version: "0.5.0"
+version: "0.7.0"
 description: >
   Guides you from a blank folder to a complete OutSystems build plan through
   a short interactive interview. Reads your spec and reference screens, proposes
@@ -139,6 +139,12 @@ the user (`AskUserQuestion`) before rewriting specs for waves other than the
 one currently being planned, the same way any other plan revision is
 confirmed.
 
+**A list→detail pair discovered this way is two waves, not one**, even
+though it's natural (and correct) to prototype and approve both screens in
+the same sitting — see the one-screen-per-wave hard cap below. Approving
+two screens together in the prototype conversation does not mean they
+execute together against Mentor; write two spec files and fire two prompts.
+
 ---
 
 ## The wave execution cycle
@@ -269,12 +275,33 @@ Adjust based on feedback. Only generate files after this is confirmed.
 
 ### Sizing rule
 
-**Maximum per wave:** ~3–4 server actions plus one screen, or two screens with
-minimal logic. Logic-heavy waves (scoring, multi-guard finalization) should be
-one screen with fewer actions.
+**Hard cap: never more than one screen per wave — no exceptions.** A wave
+that touches two screens (even a trivial list + its detail view) is two
+waves. This is deliberately stricter than "small waves" as a vague goal —
+it's a checkable rule with no judgment call attached, which is the point:
+"is this small enough" invites rationalizing a bundle ("these two screens
+came from the same design decision, so they're really one unit") the way
+a hard numeric cap doesn't. A list screen and its detail screen are two
+waves even when they were prototyped and approved together in the same
+sitting — prototype scope and Mentor-execution scope are not the same
+thing, and conflating them is exactly how a wave quietly grows past what
+the static gate and the compare-against-prototype step can verify in one
+pass.
 
-**Minimum per wave:** one screen in any state — even a layout-only shell with
-no data is a valid wave if it can be verified visually.
+**Maximum per wave:** ~3–4 server actions plus the one screen. Logic-heavy
+waves (scoring, multi-guard finalization) should have fewer actions than
+that, not more, even though they still get only one screen.
+
+**Minimum per wave:** one screen in any state — even a layout-only shell
+with no data is a valid wave if it can be verified visually.
+
+**Data seeds don't count against the one-screen cap, but check the total
+anyway.** A wave that seeds reference data (a checklist, a lookup table)
+alongside the one screen that reads it is normal and still one wave — the
+seed isn't a screen. But if the seed itself is non-trivial (many records,
+several entity types, business-rule-shaped data like scoring bands), treat
+it as real wave weight when judging size, even though it isn't a screen or
+an action in the usual sense.
 
 ### The shape that usually emerges
 

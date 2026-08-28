@@ -203,6 +203,8 @@ README.md               this file
 
 | Version | What changed |
 |---|---|
+| 0.7.0 | Two new `prototype-to-widgets.md` entries from a real wave: (1) a link can be empty — content placed *beside* the anchor instead of *inside* it looks fixed but is unclickable; (2) re-parenting elements (e.g. moving them inside a new link to fix #1) drops them out of the old parent's flex context, since `display: flex` only arranges direct children — the new wrapper needs its own flex rule restated. |
+| 0.6.0 | Hard cap: never more than one screen per wave, no exceptions — a list+detail pair discovered together in the prototype is still two waves. Data seeds don't count against the cap but should be weighed for real size. |
 | 0.5.0 | Test evidence is now required, not just a tally: `playwright.config.ts` ships with an HTML reporter by default, and the wave log must record its path (overwritten each run — that's expected, not a gap). |
 | 0.4.0 | Added `references/prototype-to-widgets.md` — an HTML→OutSystems-widgets conversion guide distilled from real recurring bugs (layout placeholders that aren't stacked divs, fill-parent-by-default containers, flex `min-width` shrink, `Adaptive` margin misalignment, reserved theme class names, canonical vs. invented CSS variables, and when a pattern like list→detail is already a built-in block). |
 | 0.3.0 | Screenshots alone under-specify box model. Added a mandatory "box model facts" requirement: every wave spec's Screen layout section, and every Mentor prompt, must state in words what a picture can't show — explicit max-width/width for any non-fill-parent container, which elements stack as blocks vs. share a row, and which flex children need `min-width: 0`. |

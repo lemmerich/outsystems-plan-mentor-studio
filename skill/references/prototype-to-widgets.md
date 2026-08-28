@@ -123,6 +123,43 @@ back button. See [`patterns/adaptive.md` § MasterDetail`](../../outsystems-desi
 Hand-rolling this from a `Container` + client-side variable duplicates a
 block that already exists and already handles the responsive case.
 
+## 9. A fixed "link doesn't work" bug can mean the link is empty, not just badly targeted
+
+Entry #8's row-click problem (padding outside the link) has a more basic
+sibling bug: sometimes the interactive element has **no content inside it
+at all**. Asking Mentor to "wrap a nav item's icon and label in a link" can
+produce a real `<a href="...">` sitting *next to* the icon+label instead of
+*around* them — the anchor's `textContent` is empty, so nothing the user
+can see or click is actually inside it. This renders as a normal-looking
+nav item and even resolves in accessibility-tree tooling as "a link with
+this href," which makes it easy to sign off as fixed from a screenshot or
+a cursory find-by-role check. The only way to catch it is to read the
+actual DOM: `element.textContent.trim()` on the anchor, not just its
+presence. When a prompt asks for "X wrapped in a link," say explicitly that
+X must be **inside** the anchor tag as its child content, not merely
+adjacent to it, and verify by checking the anchor's own text/content after
+publish — not by clicking near it and seeing something react.
+
+## 10. Moving children into a new wrapper drops them out of the old flex context
+
+`display: flex` on a container only arranges its own **direct** children —
+it does not cascade to grandchildren. So the moment you fix #9 by moving an
+icon and a label from being direct children of `.nav-item` into being
+children of a new `<a>` wrapped around them, the old `.nav-item { display:
+flex; gap: ... }` rule stops applying to them (they're no longer direct
+children of `.nav-item` — the `<a>` is), and they silently stack as
+ordinary block content instead of sitting side by side. This is exactly
+the kind of regression that a fix for one bug (#9) introduces while fixing
+it: the new wrapper element needs its **own** `display: flex; align-items:
+center; gap: ...` rule, mirroring whatever layout rule the old direct-child
+relationship relied on. Whenever a prompt asks Mentor to re-parent
+elements — wrap existing content in a new link, button, or container — ask
+explicitly whether the old parent's flex/grid rules need to be **restated
+on the new immediate parent**, and check every element that changed
+nesting, not just the one the bug report named (a shared theme class like
+`.nav-item > a` typically means the fix applies to every screen that uses
+it, not just the one screen where the regression was noticed first).
+
 ## When this file isn't enough
 
 This is a short list of *recurring* mechanical gaps from one project's
