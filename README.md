@@ -104,6 +104,41 @@ after step 4 finds nothing left to reconcile and step 6's tests pass.
 
 ---
 
+## The prototype-to-widgets reference
+
+`skill/references/prototype-to-widgets.md` is a short conversion guide the
+skill loads before writing a wave's Screen layout section or a Mentor
+prompt. It exists because step 4 of the cycle above (Compare) keeps finding
+the same handful of bug shapes, over and over, across unrelated projects —
+not typos, but places where an HTML prototype's CSS says one thing and the
+OutSystems UI default says another, and nothing in a screenshot signals the
+mismatch:
+
+- a layout's `Title` and `Header` placeholders sit in different regions of
+  the top bar, not stacked — content meant as a subtitle *inside* the title
+  block ends up next to it instead
+- every non-Column container defaults to fill-parent; a prototype's
+  `max-width` cap doesn't survive into the prompt unless it's stated as a
+  number
+- flex children don't shrink below their content width by default —
+  dynamic text wraps early with no visual cue in the reference screenshot
+- `MarginLeft: Adaptive` silently offsets sibling text widgets from each
+  other
+- five class names (`sidebar`, `header`, `content`, `main-content`,
+  `footer`) collide with the platform's own theme rules
+- a prototype's own invented CSS variables work but don't propagate the
+  way overriding OutSystems UI's *canonical* variables does
+- a "click a row, see a detail view" pattern is sometimes just the
+  `MasterDetail` block, not something to hand-build
+
+Each entry states the failure mode and what to say in the prompt to avoid
+it — it's an accumulated-bugs list, not a full OS UI catalog. For anything
+outside these recurring cases, it points to `outsystems-design-to-app`'s
+deeper reference library. Read it once per wave, before the screenshot goes
+into the prompt — that's the whole workflow.
+
+---
+
 ## Updating the skill
 
 When you improve the skill (fix a bug, add a lesson learned, refine the interview):
