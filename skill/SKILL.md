@@ -209,7 +209,7 @@ execute together against Mentor; write two spec files and fire two prompts.
 
 ## The wave execution cycle
 
-Executing a wave is not "fire Mentor, publish, done" — it is a fixed
+Executing a wave is not "paste the prompt, publish, done" — it is a fixed
 six-step loop, and it applies whether the wave is brand new or a fix on top
 of one already published. **Skip a step only when the user explicitly says
 to; never skip a step silently.**
@@ -226,7 +226,7 @@ to; never skip a step silently.**
 5. Reconcile    — for each difference: fix the app (usually), or fix the
                   prototype/spec if the difference was the prototype's own
                   oversight (see the prototype-first principle) — then
-                  re-publish and go back to step 4 until there's nothing left
+                  re-publish and go back to step 4, within the budget below
 6. Test         — update/add E2E test cases for what changed, then ask the
                   user whether to run them now (never auto-run — see the
                   RUNBOOK's per-wave procedure)
@@ -246,7 +246,7 @@ step in the cycle before doing anything else** — even when the user's last
 message already tells you to continue. This is not optional narration: the
 whole point of a fixed cycle is that neither the model nor the person
 reviewing it has to hold "what comes next" in their head. A short line is
-enough: *"Prototype approved — updating spec-w5.md and firing Mentor next."*
+enough: *"Prototype approved — updating spec-w5.md and emitting the W5 prompt next."*
 If the user redirects mid-cycle (a different bug to chase, a question), pick
 the cycle back up at the step you were on rather than silently dropping it.
 
@@ -257,10 +257,10 @@ step, so a shortcut silently becomes the new unstated default for every wave
 after it.
 
 This cycle is why `RUNBOOK.md`'s per-wave procedure (Step 6 below) is
-written as prototype → approve → spec → Mentor → publish → compare against
-prototype → tests, not as a single "build the wave" instruction — and it is
-why the static gate includes "screen matches the approved prototype
-screenshot" as a checklist item, not just "matches the spec text."
+written as prototype → approve → spec → emit → paste → publish → compare
+against prototype → tests, not as a single "build the wave" instruction — and it is
+why the static gate includes "screen matches the approved
+prototype" as a checklist item, not just "matches the spec text."
 
 ---
 
@@ -517,7 +517,7 @@ image)**: for every container that must not fill-parent, state its
 max-width/width in px explicitly (e.g. "the form card caps at 640px — it
 must NOT stretch to the content area's full width, which is a different,
 larger number"); for every pair of elements that must stack as separate
-blocks, say so explicitly even if it looks obvious in the screenshot; for
+blocks, say so explicitly even if it looks obvious in the markup; for
 any flex child that must shrink below its content's natural width, name the
 container and require `min-width: 0`. State them in prose even though the markup
 is embedded in the prompt — the redundancy costs three lines and Mentor follows
@@ -740,7 +740,7 @@ GUARDRAILS (apply to every screen and action in this wave):
 - [ ] Every UI wave has an approved prototype screen, and its spec's Screen
       layout section was derived from that approved screen, not written first
 - [ ] After publish, the live screen was compared against the prototype
-      screenshot directly (open both side by side) — not just checked
+      directly (open both side by side) — not just checked
       against the spec's prose description, which is where subtle misses
       (stacking vs inline, font weight, static vs dynamic text) slip through
 - [ ] Every wave ends with something clickable — no entity-only waves
