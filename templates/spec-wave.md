@@ -1,6 +1,11 @@
 # W<N> — [Wave name]
 
 **Wave N of M** · [committed / deferred]
+`canal: appgen | mentor-studio | manual` · `fidelidade: demo | secundária`
+
+> `fidelidade: demo` = this screen is on the demo script. Unbounded reconcile
+> rounds, and a case in `tests/demo.spec.ts`. `secundária` = two reconcile
+> rounds, then accept the remaining diffs and log them.
 
 ---
 
@@ -24,6 +29,10 @@
 - [list of artifacts from earlier waves]
 
 **Data model changes:** none ← or describe exactly what changes
+
+**DO NOT TOUCH** (goes verbatim into the prompt — names only, no descriptions):
+- [artifact]
+- [artifact]
 
 > ⚠️ If a `Text` field must hold more than 50 characters, say so explicitly:
 > "ExtractedText — unbounded Text". Mentor silently creates `Text(50)` otherwise.
@@ -122,5 +131,14 @@ This wave does not build:
 - [Any ODC-specific trap to call out for this wave]
 - [Which invariant from the SDD this wave must respect]
 
-**If this wave stalls** (no terminal state after ~30 min):
-Fire [first part] first, verify [specific artifact or count], then fire [second part].
+---
+
+## Prompt
+
+`prompts/w<N>.md` — generated from this spec via `templates/wave-prompt.md`.
+Only `canal: mentor-studio` waves have one.
+
+**If this wave stalls** (Mentor drops items, or a third re-prompt is needed):
+split here. Paste [first part] first, confirm [specific artifact or count] in the
+module tree, then paste [second part] as a separate prompt with its own context
+pack.

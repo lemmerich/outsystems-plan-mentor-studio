@@ -1,6 +1,6 @@
 ---
-name: outsystems-plan
-version: "0.7.0"
+name: outsystems-plan-mentor-studio
+version: "0.7.0-ms.1"
 description: >
   Guides you from a blank folder to a complete OutSystems build plan through
   a short interactive interview. Reads your spec and reference screens, proposes
@@ -11,6 +11,9 @@ description: >
   truth. Use when starting a new OutSystems project or planning a new feature
   set: "plan this project", "quebrar em ondas", "criar plano a partir do SDD",
   "start planning".
+  FORK - Mentor Studio channel: this variant assumes no OutSystems MCP. Every
+  wave's prompt is EMITTED for a human to paste into the ODC Studio assistant,
+  and the plan is tuned for PoC delivery (demo path first, fidelity budgeted).
 license: MIT
 allowed-tools: AskUserQuestion Bash Read Write Edit Artifact
 ---
@@ -22,20 +25,75 @@ allowed-tools: AskUserQuestion Bash Read Write Edit Artifact
 Running this skill in a project folder creates:
 
 ```
+SPEC-REVIEW.md          ambiguities and assumptions, signed off before planning
 RUNBOOK.md              the single source of truth: waves, gates, execution order
 spec-w1.md … spec-wN.md one file per wave
+prompts/w1.md … wN.md   the paste-ready Mentor Studio prompt for each wave
 tests/
   playwright.config.ts
   package.json
   .env.example
   support/selectors.ts  all locators and verbatim messages in one place
   support/fixtures.ts   one authenticated Page per role
+  auth.setup.ts         logs in once, saves storageState for every spec
+  demo.spec.ts          replays the demo script end to end — must never be red
   w1.spec.ts … wN.spec.ts
   files/README.md       where test fixture files (PDFs, etc.) live
 ```
 
-The skill produces the **plan**. Execution — firing Mentor, polling, publishing,
-running the tests — is the RUNBOOK's job.
+The skill produces the **plan** and the **prompts**. Execution (pasting a prompt
+into Mentor Studio, publishing, running the tests) is the RUNBOOK's job and the
+operator's hands.
+
+---
+
+## The channel: Mentor Studio, not MCP
+
+Upstream `outsystems-plan` drives Mentor through the OutSystems MCP: it fires a
+turn, polls for a terminal state, reads the model back with `context_entities` /
+`context_actions` / `context_screens`, and publishes. **This fork has none of
+that.** The assistant here is Mentor Studio, the chat inside ODC Studio: a human
+pastes a prompt into it and watches it work.
+
+Four consequences shape everything below.
+
+**1. Execute becomes Emit + Paste.** The skill never fires anything. It writes
+`prompts/wN.md` and shows the prompt in a fenced block for the operator to copy.
+The operator pastes it, lets Mentor work, publishes, and comes back saying
+"W3 done" (or "W3 did X instead"). Turn IDs, poll intervals, retry counts and
+`change_applied` do not exist here - never write a log line that implies they do.
+
+**2. The static gate is manual and weaker.** There is no programmatic entity /
+action / screen count. The gate becomes a short read-back the operator performs
+in the ODC Studio module tree, plus whatever the Compare step sees. Accept that
+this is softer than upstream's gate and do not pretend otherwise: compensate by
+leaning harder on Compare (step 4) and on the E2E tests, which are the only
+checks left that a machine performs.
+
+**3. The prompt must be self-contained AND small.** Upstream re-sends the wave
+spec plus the SDD plus the design system on every turn, because an MCP prompt is
+cheap and the session carries `fresh_context`. Mentor Studio is an IDE chat with
+no memory across sessions and a human doing the pasting - a 4,000-line paste is
+not viable. Every prompt therefore carries a **context pack**: only the modules,
+entities, screens and actions that already exist and matter for this wave, plus
+an explicit do-not-touch list. Generate it at emit time from the RUNBOOK wave
+table and the previous waves' specs. Never version a separate `CONTEXT.md` - it
+is derived, and a derived file that gets stored is a file that goes stale.
+
+**4. There is no image channel - so send the HTML, not a description of it.**
+Upstream attaches a prototype screenshot and then spends guardrail 9 describing
+in words the box-model facts a picture cannot carry. Here there is no picture at
+all, which turns out to be an advantage: paste the **pruned HTML and CSS of that
+one screen** from the living prototype directly into the prompt. It is text, it
+is the literal contract, and it carries max-width, stacking and flex behaviour
+exactly instead of approximately. Prune it first (see
+`references/mentor-studio-prompt.md`): one screen only, no nav switcher, no JS,
+no unrelated CSS. Target 120 lines. If a screen's markup cannot be cut below
+roughly 200 lines, the wave is too big.
+
+**Verify before the first project:** if the Mentor Studio build in use does
+accept image attachments, keep the pruned HTML anyway (it is strictly more
+precise) and add the screenshot on top.
 
 ---
 
@@ -74,7 +132,7 @@ So for every wave that touches UI, the sequence is always:
 1. Cut the wave (functional slice — Step 2 below)
 2. Prototype it in HTML (this step) — build or evolve the artifact, get it approved
 3. Derive the wave spec's Screen layout section FROM the approved prototype
-4. Execute the wave (RUNBOOK Step — fire Mentor with the prototype screenshot attached)
+4. Emit the wave prompt (RUNBOOK Step — pruned prototype markup embedded, no screenshot)
 5. Verify the published result against the prototype, not just against the spec text
 6. Any change made to reconcile — in either direction — gets written back:
    prototype edits go into the spec; implementation constraints Mentor surfaces
@@ -110,16 +168,18 @@ not a throwaway mockup.
 4. Only once the user explicitly approves a screen does it graduate into
    that wave's spec.
 
-**A prototype screenshot transfers color, typography, and field grouping
-faithfully. It systematically fails to transfer box model** — max-width
-constraints, block-vs-inline stacking, and flex shrink behavior
-(`min-width: 0`) are invisible or ambiguous in a static image, and Mentor
-defaults every OutSystems UI container to fill-parent unless told otherwise
-in words. Do not rely on "attach the screenshot" alone and expect fidelity;
-before writing each wave's Mentor prompt, read the prototype's own CSS for
-that screen and pull out these facts explicitly (see guardrail 9 below).
-Skipping this step is what produces the "looks right, then a week later
-someone compares it pixel-by-pixel and finds five divergences" loop — cheap
+**The prototype is transferred as pruned markup, not as a picture.** A
+screenshot carries color, typography and field grouping faithfully and
+systematically fails to carry box model - max-width constraints,
+block-vs-inline stacking, and flex shrink behaviour (`min-width: 0`) are
+invisible or ambiguous in a static image, and Mentor defaults every OutSystems
+UI container to fill-parent unless told otherwise in words. Since this fork has
+no image channel at all (see "The channel" above), the wave prompt embeds the
+screen's own markup and CSS instead, which carries those three facts exactly.
+State them in prose next to the markup anyway: Mentor follows a written
+constraint more reliably than it infers one from CSS, and the redundancy costs
+three lines. Skipping this is what produces the "looks right, then a week later
+someone compares it pixel-by-pixel and finds five divergences" loop - cheap
 to prevent up front, expensive to find one bug at a time after publish.
 
 **Before writing any wave's Screen layout section, read
@@ -157,8 +217,9 @@ to; never skip a step silently.**
 ```
 1. Prototype    — build or evolve the screen(s) in the living prototype (HTML)
 2. Approve      — get the user's explicit sign-off on the prototype change
-3. Execute      — update the wave spec from the approved prototype, then
-                  fire Mentor with box-model facts in the prompt; publish
+3. Emit         — update the wave spec from the approved prototype, then
+                  write prompts/wN.md and show it for the operator to paste
+                  into Mentor Studio; the operator publishes and reports back
 4. Compare      — open the published screen and the approved prototype
                   side by side; list every visual/behavioral difference —
                   don't stop at the first one found
@@ -170,6 +231,15 @@ to; never skip a step silently.**
                   user whether to run them now (never auto-run — see the
                   RUNBOOK's per-wave procedure)
 ```
+
+**Reconcile has a budget: two rounds per wave.** Upstream loops steps 4 to 5 to
+4 until nothing is left, which is right when reconciling costs one more MCP
+call. Here every round costs a human copy/paste, a Mentor run and a publish, so
+an unbounded loop is how a two-day PoC becomes a two-week one. After the second
+round, stop: record the remaining differences in the wave log as accepted and
+move on. The exception is a wave marked `fidelidade: demo` - a screen on the
+demo path gets as many rounds as it needs, because that screen is the product.
+Everything else is scenery.
 
 **After every step completes, state what just finished and name the next
 step in the cycle before doing anything else** — even when the user's last
@@ -191,6 +261,43 @@ written as prototype → approve → spec → Mentor → publish → compare aga
 prototype → tests, not as a single "build the wave" instruction — and it is
 why the static gate includes "screen matches the approved prototype
 screenshot" as a checklist item, not just "matches the spec text."
+
+---
+
+## Step 0 — Spec review and PoC classification
+
+Upstream goes straight from "share your spec" to the wave interview. That works
+when the spec is your own. In a PoC factory the spec arrives from a customer and
+is normally incomplete in ways that only surface at W4, when they are expensive.
+Two things happen before the interview.
+
+**Write `SPEC-REVIEW.md`** (template in `templates/SPEC-REVIEW.md`) and get an
+explicit sign-off. Four lists, nothing else:
+
+- **Ambiguities** - the question, and the reading you will assume if it goes
+  unanswered. Never leave the assumption implicit.
+- **Contradictions** - where the spec disagrees with itself, quoted.
+- **Missing but required** - what is not in the spec and cannot be skipped: the
+  auth model, the states an entity moves through, what an empty list shows.
+- **Out of scope** - what you are deliberately not building, written down so the
+  demo conversation cannot drift into it three days later.
+
+Be aggressive. An ambiguity caught here costs one line; caught in W4 it costs a
+wave, and in this channel a wave costs a human.
+
+**Classify the project: PoC or final application.** Ask; do not infer it from
+the word "PoC" in a filename. The classification changes real decisions:
+
+| | PoC | Final application |
+|---|---|---|
+| Modules | as few as possible, usually one | proper UI / Core / integration split |
+| Stubs and seed data | a feature - seed generously, stub every external boundary | debt - must be real before handover |
+| Data model | derived from the screens; normalize only where it hurts | modeled first |
+| Fidelity | high on the demo path, good enough elsewhere | uniform |
+| Handover | `templates/POC-HANDOVER.md` | upstream pre-production checklist |
+
+Write the classification into the RUNBOOK header. Every later judgment call
+refers back to it.
 
 ---
 
@@ -244,6 +351,12 @@ the zero-hex-literal gate cannot be enforced.
 This answer sets the wave order. Value path waves come first, fully working.
 Admin and reporting waves come last.
 
+**In a PoC the value path is the demo script.** Ask for it as one: the exact
+click sequence you will run in front of the customer, in order, with what
+appears on screen at each step. Written that way it does three jobs at once - it
+orders the waves, it decides which screens get `fidelidade: demo`, and it is the
+one Playwright spec that must never go red. Keep it verbatim in the RUNBOOK.
+
 ### Question 5 — Target environment
 
 > "Is this a new app or an existing one? And: is the app open (no login) or
@@ -251,9 +364,14 @@ Admin and reporting waves come last.
 > with some screens and roles already — do you know what baseline it has?"
 
 This determines:
-- Whether wave 1 needs `app_create` or can use an existing app key
-- Whether the zero-screen, zero-action baseline needs to be measured first
-- Whether test user provisioning is needed
+- Whether W0 creates the app (AppGen or by hand - never Mentor Studio, see
+  "Choosing the channel per wave") or an existing app is extended
+- What the module tree already contains, since every context pack has to state it
+- Whether test user provisioning and a saved Playwright `storageState` are needed
+
+**Also ask which channels are available:** AppGen in the ODC portal, Mentor
+Studio in the IDE, Mentor MCP. They are not interchangeable and every wave gets
+a `canal:`.
 
 ### Question 6 — Confirm the wave proposal
 
@@ -306,7 +424,9 @@ an action in the usual sense.
 ### The shape that usually emerges
 
 ```
-W1  Foundation     theme, shell, reference data seed, the first screen (layout only)
+W0  App + theme    app exists, OutSystems UI theme customised, shell renders
+                   (canal: appgen or manual — never Mentor Studio)
+W1  Foundation     reference data seed, the first screen (layout only)
 W2  First feature  data loads in that screen; create form exists and validates
 W3  Core action    the main business action works end to end
 W4  Review step    the human decision / override / confirmation flow
@@ -318,6 +438,36 @@ W…  Reporting      aggregates and dashboards
 Commit to building through the last value-path wave. Mark admin and reporting
 waves as **DEFERRED** — write their specs anyway, mark them clearly, exclude
 them from the initial test run.
+
+### Choosing the channel per wave
+
+Mentor Studio is good at changing a module that already exists and bad at
+creating structure from nothing. The first wave is therefore not a Mentor Studio
+wave.
+
+| Wave shape | Channel | Why |
+|---|---|---|
+| Create the app, base theme, shell | AppGen or by hand | Studio has no reliable start-from-empty behaviour; AppGen produces a coherent baseline in one shot |
+| Theme refinement on an existing app | Mentor Studio | it is a variables-and-CSS edit, which Studio does well |
+| One screen plus up to 4 actions | Mentor Studio | the default |
+| Bulk repetitive change across many artifacts | MCP, if available | pasting the same prompt eight times is not a plan |
+
+Every wave spec states its `canal:` on the header line. A wave whose channel is
+not Mentor Studio still gets a spec and a gate; it just gets no `prompts/wN.md`.
+
+### W0 — theme first, always
+
+Every project starts by building a theme on top of OutSystems UI, before any
+feature wave. Two reasons: the prototype's palette has to land somewhere real or
+every later wave re-litigates it, and design direction that reaches a prompt as
+"use the brand blue" produces a hex literal, which the gate then rejects. W0's
+output is a theme whose variables later prompts refer to **by name**, and a shell
+that renders.
+
+From W1 on, design direction in a wave prompt names the native OutSystems UI
+block it maps to (`Card`, `Tabs`, `ListItem`, `Columns2`), never a generic
+description. A prompt that says "a card-like container" gets a `<div>`; one that
+says `Card` gets a `Card`.
 
 ### Data model rule
 
@@ -340,6 +490,8 @@ One file per wave. Each file follows this structure:
 ```
 ## W<N> — <short name>
 
+`canal: appgen | mentor-studio | manual` · `fidelidade: demo | secundária`
+
 ### What this wave proves
 One sentence. What can a human do and verify after this wave is published?
 
@@ -350,9 +502,9 @@ One sentence. What can a human do and verify after this wave is published?
 
 ### Screen layout
 **Referência visual aprovada**: link do protótipo HTML (Artifact URL) +
-qual aba/estado dele é esta tela. This is the primary reference — attach a
-screenshot of it to the Mentor prompt (RUNBOOK Step). An ASCII sketch may
-follow as a quick summary of field grouping, but it is never the sole
+qual aba/estado dele é esta tela. This is the primary reference — the
+pruned markup and CSS for this tab go verbatim into `prompts/wN.md`; there is no
+image channel (see "The channel"). An ASCII sketch may follow as a quick summary of field grouping, but it is never the sole
 reference; if a prototype does not exist yet for this screen, one must be
 built and approved (see "The prototype-first principle") before this
 section is written. Explicitly say how form fields are grouped — e.g.,
@@ -367,8 +519,10 @@ must NOT stretch to the content area's full width, which is a different,
 larger number"); for every pair of elements that must stack as separate
 blocks, say so explicitly even if it looks obvious in the screenshot; for
 any flex child that must shrink below its content's natural width, name the
-container and require `min-width: 0`. These three facts do not survive a
-"here's a screenshot, match it" prompt — see "The prototype-first
+container and require `min-width: 0`. State them in prose even though the markup
+is embedded in the prompt — the redundancy costs three lines and Mentor follows
+a written constraint more reliably than it infers one from CSS. These three
+facts do not survive a prose-only prompt — see "The prototype-first
 principle" above and `references/prototype-to-widgets.md` for the recurring
 failure modes behind each of these three facts.
 
@@ -387,6 +541,10 @@ failure modes behind each of these three facts.
 
 **Rules for writing specs:**
 
+- Set `fidelidade: demo` only for screens on the demo script. Those get an
+  unbounded reconcile loop and a case in `demo.spec.ts`. Everything else is
+  `secundária`: two reconcile rounds, then accept the diff and log it.
+- Set `canal:` deliberately. Only `mentor-studio` waves get a `prompts/wN.md`.
 - Quote every user-facing message verbatim. "Formato inválido. Envie um PDF." not "a validation message."
 - Mark every `Text` field that must be truly unbounded — Mentor silently creates them as `Text(50)` otherwise.
 - The out-of-scope section must name what the previous wave owns (so Mentor cannot helpfully rebuild it) and what the next wave will own (so it does not build ahead).
@@ -406,6 +564,12 @@ Key rules:
 - All locators and all verbatim messages live in `support/selectors.ts`. A UI rename is one edit.
 - Prefer accessible role + visible text. Never target generated OutSystems DOM ids — they change on republish.
 - For negative RBAC: assert controls are **absent**, not disabled.
+- Log in once by hand and save Playwright's `storageState`; every spec reuses it
+  through `support/fixtures.ts`. Re-authenticating per test against the ODC login
+  screen is slow, flaky, and the first thing that will break the suite.
+- Keep one `demo.spec.ts` replaying the demo script end to end, separate from the
+  per-wave specs. It is the only suite that must be green before the PoC is shown
+  to anyone; per-wave specs are allowed to carry accepted diffs.
 
 **Known OutSystems selector pitfalls** (write tests to avoid these from the start):
 
@@ -447,7 +611,7 @@ Started: <!-- fill with `date "+%Y-%m-%dT%H-%M-%S"` at first session -->
 ---
 ```
 
-At the **start of each wave** (before firing Mentor), run:
+At the **start of each wave** (before pasting the prompt), run:
 ```bash
 date "+%H:%M:%S"
 ```
@@ -463,10 +627,10 @@ Then append one entry in this exact format — nothing more:
 
 ```markdown
 ## W<N> — <name>  |  <started> → <finished>
-- Turn <n>: <runId short>, <HH:MM>→<HH:MM> (<Xm>), retries=<N> → <applied|failed|split>
-- [Deviation: <what happened> → <how resolved>]
-- [Fix turn: <runId short>, <Xm>, retries=<N> → <what was fixed>]
-- Publish: rev <N>
+- Prompt: prompts/w<N>.md (<N> lines), canal <x> — pasted once
+- [Re-prompt <n>: <one line: what was missing or wrong in the prompt>]
+- [Deviation: <what Mentor did instead> → <how resolved>]
+- Compare: <N> differences — <N> reconciled, <N> accepted (fidelidade <x>)
 - Gate: PASS | FAIL (<reason>)
 - Tests: <N>/<N> pass [(<IDs> deferred — <reason>)]
 - Status: DONE | BLOCKED (<reason>)
@@ -476,7 +640,9 @@ Lines in `[brackets]` are optional — include only when something actually
 happened. A clean wave is four lines. A messy wave names what was messy.
 
 **What belongs in the log:**
-- Every Mentor turn that reached terminal state (runId + timing + retries)
+- Every paste and every re-prompt, with a one-line reason for the re-prompt
+  (this is the raw material for the retrospective that improves the prompts)
+- Differences Compare found, and which ones were accepted instead of fixed
 - Every deviation from the spec and its resolution (one line each)
 - Gate verdict and test result
 - Known gaps that carry forward
@@ -493,7 +659,7 @@ The RUNBOOK is the operator's guide. It is generated once at plan creation and
 updated as waves execute. It contains:
 
 1. **Resumption pointer** — `## Current wave` updated to the active wave before each fire
-2. **Project facts** — tenant, app name, app key (resolved at session start, never hardcoded)
+2. **Project facts** — app name, module names, classification (PoC or final application), and the demo script verbatim
 3. **Wave table** — name, scope summary, committed vs deferred, status
 4. **Living prototype pointer** — the Artifact URL of the cumulative HTML
    prototype (see "The prototype-first principle"), plus a one-line rule:
@@ -501,17 +667,13 @@ updated as waves execute. It contains:
    it, and no prototype change ships without being written back into the
    wave's spec.
 5. **Per-wave procedure** — prototype/evolve the wave's screen(s) in the
-   living prototype → get user approval → update `spec-wN.md` Screen
-   layout from the approved prototype → fire Mentor with a screenshot of
-   the approved screen attached (in addition to the theme-continuity line)
-   → poll (always drain-and-pause: poll immediately while the cursor is
-   draining new events, then pause ~30-60s once drained and not yet
-   terminal — never fixed-interval/500ms polling; see
-   `outsystems-mentor-polling-behavior`) → static gate, including a visual
-   diff against the prototype (not just the checklist) → publish → ask
-   about tests
+   living prototype → get user approval → update `spec-wN.md` Screen layout
+   from the approved prototype → emit `prompts/wN.md` and show it for the
+   operator to paste into Mentor Studio → operator publishes and reports back
+   → manual static gate (module-tree read-back) → compare against the
+   prototype → reconcile within budget → ask about tests
 6. **Mentor prompt guardrails** — prepended to every Mentor prompt, every wave
-7. **Static gate checklist** — entity count, action count, screen count, zero hex literals, no unauthorized roles, **screen matches the approved prototype screenshot** (layout, grouping, negrito/weight, dynamic vs static text — verify by opening the published screen and comparing, not by re-reading the spec)
+7. **Static gate checklist** — entity, action and screen counts read back from the ODC Studio module tree by the operator, zero hex literals, no unauthorized roles, **screen matches the approved prototype** (layout, grouping, negrito/weight, dynamic vs static text — verify by opening the published screen and comparing, not by re-reading the spec)
 8. **Failure playbook** — what to do when things go wrong
 9. **Timing log** — one row per milestone, cumulative across waves
 10. **Never list** — absolute prohibitions
@@ -550,27 +712,25 @@ GUARDRAILS (apply to every screen and action in this wave):
 
 7. Add every `data-test` attribute listed in the wave spec, spelled exactly.
 
-8. A screenshot of the approved prototype is attached to this prompt as the
-   primary layout reference. Match it exactly — including whether elements
-   stack on separate lines (block) or share one line (inline/flex-row).
-   Don't infer structure from the wording of the spec text; read it off the
-   image.
+8. The approved prototype's markup for this screen is included verbatim below,
+   under PROTOTYPE MARKUP. It is the primary layout reference. Match it,
+   including whether elements stack on separate lines (block) or share one line
+   (flex row). Translate it into OutSystems UI blocks: do not paste raw HTML
+   into the screen, and do not invent structure the markup does not have.
 
-9. A screenshot alone under-specifies box model. It shows what a container's
-   size happens to be at one viewport, not whether that size is a hard
-   constraint or incidental — and it cannot show `min-width: 0` shrink
-   behavior on a flex child at all, since that only manifests as a bug once
-   text is long enough to wrap. Every wave's Mentor prompt must state, in
-   words, alongside the screenshot: (a) any element that must NOT fill its
-   parent's width — name it and give the exact max-width/width in px (every
-   OutSystems UI container defaults to fill-parent; "don't stretch" is
-   always opt-in, never assume it transfers from the picture), (b) which
-   sibling elements must stack as separate blocks vs. share a row, and
-   (c) any flex child that must shrink below its content width (name the
-   container, require `min-width: 0` explicitly) — this is invisible in a
-   screenshot and easy to skip. Extract these facts from the prototype's own
-   CSS while writing the wave spec (Step 3's Screen layout section), not
-   from eyeballing the rendered image a second time.
+9. State the box model in words as well, even though the markup is right there:
+   (a) any element that must NOT fill its parent width — name it and give the
+   exact max-width in px (every OutSystems UI container defaults to fill-parent,
+   so "don't stretch" is always opt-in), (b) which sibling elements stack as
+   separate blocks vs. share a row, and (c) any flex child that must shrink
+   below its content width (name the container, require `min-width: 0`).
+
+10. Scope is absolute. Do not create, rename or delete anything listed under
+    DO NOT TOUCH, and do not build ahead into the next wave. If something here
+    is impossible, or contradicts what is already in the module, stop and say so
+    instead of improvising a workaround. There is a human reading your answer
+    who can re-plan in a minute; a silent improvisation costs a full
+    compare-and-reconcile round to even discover.
 ```
 
 ---
@@ -591,3 +751,8 @@ GUARDRAILS (apply to every screen and action in this wave):
 - [ ] Each spec has a split point for if it stalls
 - [ ] Test IDs in specs match the `.spec.ts` files exactly
 - [ ] RUNBOOK has the failure playbook and never list
+- [ ] SPEC-REVIEW.md exists and its assumptions were signed off
+- [ ] The project is classified PoC or final application in the RUNBOOK header
+- [ ] Every `mentor-studio` wave has a `prompts/wN.md` under 200 lines
+- [ ] Every wave has `canal:` and `fidelidade:` set deliberately, not defaulted
+- [ ] The demo script is in the RUNBOOK verbatim and covered by `demo.spec.ts`

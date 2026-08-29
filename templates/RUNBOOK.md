@@ -1,160 +1,145 @@
 # RUNBOOK — [Project Name]
 
-**Spec:** [SDD file path]
-**Design reference:** [design-system.md or "none"]
+**Spec:** [SDD file path]  ·  **Spec review:** SPEC-REVIEW.md (signed off [date])
+**Classification:** PoC | Final application
 **Target:** OutSystems Developer Cloud (ODC)
-**Build method:** ODC Mentor, one wave at a time
-
-> Resolve tenant and app at the start of every session with `auth_status` and
-> `app_list`. Never carry a key from a previous session without re-resolving.
+**Build method:** Mentor Studio, one wave at a time, prompts pasted by hand
 
 | | |
 |---|---|
-| Tenant | _resolve with `auth_status`_ |
 | App name | [app name] |
-| App key | _resolve with `app_list`_ |
-| Baseline | _measure before the first Mentor turn_ |
+| Modules | [names] |
+| Theme | [theme name] — variables: [list] |
+| Prototype | [Artifact URL of the living prototype] |
+| Environment URL | [dev stage URL] |
+
+---
+
+## Demo script
+
+The click sequence this PoC exists to support. Verbatim, in order. It sets the
+wave order, decides which screens are `fidelidade: demo`, and is what
+`tests/demo.spec.ts` replays.
+
+```
+1. [screen] → [action] → [what appears]
+2. [...]
+```
 
 ---
 
 ## Current wave
 
-**→ W___ — ___**  *(update this line each time you start a new wave)*
+**→ W___ — ___**  *(update this line before starting a wave)*
 
-This is the resumption pointer. When returning to an interrupted session:
-1. Read this line to know where to pick up.
-2. Check `execution-log.md` for the last completed entry.
-3. Re-resolve tenant and app key with `auth_status` + `app_list` before firing anything.
+Resumption pointer. When picking up an interrupted session:
+1. Read this line.
+2. Read the last entry in `execution-log.md`.
+3. Open the prototype URL and the dev environment side by side before doing
+   anything else — the app's real state is the only state that counts.
 
 ---
 
 ## Wave plan
 
-| Wave | Name | Proves | Scope | Status |
-|---|---|---|---|---|
-| W1 | Foundation | Shell renders, seed data exists | entities, theme, 1 screen | — |
-| W2 | … | … | … | — |
-| — | — | **committed scope ends here** | — | — |
-| W… | Admin screens | CRUD for reference data | +2 screens | DEFERRED |
-| W… | Reporting | Dashboard and drilldown | +2 screens | DEFERRED |
+| Wave | Name | Canal | Fidelidade | Proves | Status |
+|---|---|---|---|---|---|
+| W0 | App + theme | appgen | — | Shell renders with the project theme | — |
+| W1 | Foundation | mentor-studio | demo | Seed data exists, first screen renders | — |
+| W2 | … | mentor-studio | … | … | — |
+| — | — | — | — | **committed scope ends here** | — |
+| W… | Admin | mentor-studio | secundária | CRUD for reference data | DEFERRED |
 
 ---
 
 ## Per-wave procedure
 
-For each wave, in order:
+**0. Point at the wave**
 
-**0. Update resumption pointer and record wave start**
-
-Update the `## Current wave` line at the top of this file to the wave you
-are about to start. This is the first thing a new session reads to resume.
-
-```
-**→ W<N> — <name>**
-```
-
-Then record the start time:
+Update `## Current wave` above. Record the start time:
 
 ```bash
 date "+%H:%M:%S"
 ```
 
-Store this as the wave's `started` time. Never estimate it later.
+**1. Prototype and approve**
 
-**1. Fire Mentor**
+Evolve the living prototype with this wave's screen. Publish it to the same
+Artifact URL. Get explicit approval before anything else happens. No wave prompt
+is emitted for a screen that has not been approved.
 
-For the first wave (new app):
-```
-app_create(name: "[app name]")  →  app_key
-mentor_start(app_key, prompt: <wave spec + SDD + design-system>)
-```
+**2. Emit the prompt**
 
-For subsequent waves (resume session):
-```
-mentor_start(
-  mentor_session_id:    <from previous wave>,
-  mentor_session_token: <from previous wave's terminal result>,
-  fresh_context: true,
-  prompt: <wave spec + SDD + design-system>
-)
-```
+Update `spec-wN.md`'s Screen layout section from the approved prototype, then
+write `prompts/wN.md` from `templates/wave-prompt.md` and show it in a fenced
+block. Rules in `references/mentor-studio-prompt.md`. Before showing it, check:
 
-Always prepend these guardrails to the prompt:
-- No hex literals — every color is a theme variable.
-- **Declaring a CSS variable is not the same as applying it.** The theme
-  stylesheet must also set `background-color`, `color`, and `border-color`
-  on `.form-control`, `.dropdown-display`, `input`, `select`, `textarea`,
-  and the Upload widget's control — with enough CSS specificity to override
-  browser UA defaults. Without this, every form input renders white on a
-  dark theme even when the token is correctly defined.
-- **Forms use a multi-column grid. Never one field per line.** Fields that
-  belong together share a row. Use `Columns2` / `Columns3` /
-  `ColumnsSmallLeft` / `ColumnsSmallRight` blocks. The default vertical
-  stack from the Form widget is not acceptable.
-- **Action flows must be readable top-to-bottom without zooming.** Do not
-  stack assignments, conditions, or calls on the same coordinates. Space
-  elements so each step is individually selectable and its label is fully
-  visible. Overlapping nodes are a defect.
-- Use verified OutSystems UI block names only — no bare HTML.
-- ODC terminology only (no "Service Studio", no "eSpace").
-- Section "Out of scope" is absolute.
-- Never call `eSpace.AddDependency`.
-- Add every `data-test` attribute listed in the spec, spelled exactly.
+- [ ] Under 200 lines total
+- [ ] At most 8 numbered CHANGES
+- [ ] CONTEXT lists only what this wave touches
+- [ ] DO NOT TOUCH names every artifact from earlier waves that must survive
+- [ ] Every `data-test` from the spec is present in the markup
+- [ ] Theme variables named, zero hex literals in the markup
 
-**2. Poll**
+**3. Paste, run, publish** *(operator)*
 
-Poll every **60 seconds minimum**, regardless of what `pollAfterMs` suggests.
-Shorter intervals generate unnecessary calls without producing new information.
-Stop on `succeeded`, `failed`, or `cancelled`.
-A run still active past ~30 minutes is stuck — cancel and split at the wave's designated split point.
+Paste into Mentor Studio. Let it finish. Publish. Then say what happened: "W3
+done", or "W3 done but it created two screens", or paste Mentor's answer if it
+refused or did something unexpected.
 
-**Never delegate the fire-and-poll loop to a subagent.** Subagents have no real clock and will fabricate durations. Fire and poll in the orchestrating session.
+Publishing is a human decision, every time.
 
-**3. Static gate**
+**4. Static gate (manual)**
 
-Before publishing, verify with `context_entities` / `context_actions` / `context_screens`:
-- Entity count matches the wave's expected total
-- Action count matches
-- Screen count matches
-- Zero hex literals in any screen or block
-- No role created that the wave spec did not authorize
+There is no `context_*` call in this channel. The operator reads the module tree
+in ODC Studio and confirms:
 
-Check row `timestamp` — rows older than the Mentor turn are stale and prove nothing.
+- [ ] Entity count matches the wave's expected total
+- [ ] Action count matches
+- [ ] Screen count matches — no placeholder screens for future waves
+- [ ] No role created that the spec did not authorize
+- [ ] No hex literal in any screen or block
 
-**4. Publish**
+This gate is softer than a programmatic one. It catches "created three screens
+instead of one"; it will not catch a subtly wrong attribute type. That is what
+steps 5 and 6 are for.
 
-Publishing is a human decision. Prepare the call, report it, wait for confirmation.
+**5. Compare and reconcile**
 
-After publish, verify with `env_app` that the new revision is live.
+Open the published screen and the approved prototype side by side. List **every**
+difference before fixing any of them. Then one re-prompt covering all of them.
 
-**5. Record wave end and ask about tests**
+**Budget: two reconcile rounds.** After the second, record what remains in the
+log as accepted and move on. A wave with `fidelidade: demo` is the exception and
+gets as many rounds as it needs.
+
+**6. Record and test**
 
 ```bash
 date "+%H:%M:%S"
 ```
 
-Store this as the wave's `finished` time. Then ask:
+Append the wave entry to `execution-log.md`, then ask:
 
-Report: "Wave N is published. Do you want to run the E2E tests now?"
+> "W<N> is published. Run the E2E tests now?"
 
-If yes: `npx playwright test tests/wN.spec.ts`
-Run the full suite (all previous waves too): `npx playwright test`
-A red test means the wave is not done. Do not proceed to the next wave.
-
-If no: record the decision in the timing log and proceed.
+Never auto-run. If yes: `npx playwright test tests/wN.spec.ts`, then the full
+suite. A red test means the wave is not done.
 
 ---
 
 ## Gate: what "done" means for a wave
 
-A wave is done when:
-1. Static gate passed
-2. Published (new revision confirmed)
-3. E2E tests green (or explicitly deferred by user decision)
-4. User has clicked the feature in the running app
+1. Static gate passed (manual read-back)
+2. Published
+3. Compare finished — differences either reconciled or explicitly accepted
+4. E2E tests green, or explicitly deferred by the operator
+5. The operator has clicked the feature in the running app
 
-**`change_applied: true` is necessary but not sufficient.** Read the model back.
-A rename can report success with a fresh revision and still have the old name deployed. Check the timestamp on returned rows.
+**"Mentor said it did it" is not evidence.** In this channel there is no
+`change_applied` flag to over-trust, which removes one failure mode and adds
+another: the only report you get is prose written by the thing being audited.
+Click the feature.
 
 ---
 
@@ -162,81 +147,70 @@ A rename can report success with a fresh revision and still have the old name de
 
 | Symptom | Action |
 |---|---|
-| `change_applied: false` on a `succeeded` run | Re-fire once with `fresh_context: true`. If it repeats, escalate to a stronger model. |
-| `change_applied: true` but `context_*` shows the old state | Check the row timestamp. If newer than the turn, it silently did not land — re-fire and ask Mentor to verify per item. |
-| Run stuck past ~30 min in `applyModelApiCode` | Cancel. Split the wave at the designated split point in its spec. Fire the halves separately. |
-| `publish_status` 404 | The record expired. Check `app_revisions` — do NOT re-publish to find out. |
-| Count is off by one | Something extra was created. Find it with `context_*` and remove it. Extra artifacts compound across waves. |
-| A named block does not exist | The spec is wrong, not Mentor. Verify the real name with `context_search`, fix the spec, re-fire. |
-| Feature built but broken when clicked | This is what the whole plan exists to catch. Diagnose with `app_logs` / `db_query`, then fire a fix turn against the same wave. Do not proceed to the next wave. |
-| `run_already_in_flight` | Wait or cancel. Never fire a parallel run. |
-
-**Escalate to a stronger model when:** a wave fails twice; a gate result is ambiguous; a fix requires amending a spec; an invariant rule is in question.
+| Mentor did only part of CHANGES | Re-prompt with only the missing items, renumbered from 1, plus the context pack. Never re-send the whole wave. |
+| Mentor created extra artifacts | Name each one and ask for removal. Add its shape to DO NOT TOUCH in the next prompt. Extras compound across waves. |
+| Mentor broke an earlier wave | Stop. Do not continue. Re-prompt naming the artifact and the behaviour it must return to. Then check whether it was in DO NOT TOUCH — if not, the defect is in your prompt. |
+| Mentor refuses or contradicts itself | Paste its answer back into the planning session. Usually the spec is wrong, not Mentor. |
+| Third re-prompt on the same wave | Stop re-prompting. Split the wave at its stall point and emit two prompts. |
+| Screen looks right, breaks when clicked | This is what the plan exists to catch. Reproduce, then re-prompt against the same wave. Do not advance. |
+| Playwright can't find an element | Check `data-test` landed. Then check the selector pitfalls in SKILL.md — `Title` is a `<span>`, `TableRecords` ids land on `<td>`. The test is usually wrong before the app is. |
+| Prompt over 200 lines | The wave is too big. Split it before pasting, not after. |
 
 ---
 
 ## Execution log
 
-All execution details live in `execution-log.md` (created alongside this file).
-
-After each wave: append one entry. Format:
+All execution detail lives in `execution-log.md`. One entry per wave:
 
 ```
 ## W<N> — <name>  |  <started> → <finished>
-- Turn <n>: <runId short>, <HH:MM>→<HH:MM> (<Xm>), retries=<N> → applied
-- [Deviation: <what> → <how resolved>]
-- [Fix turn: <runId short>, <Xm>, retries=<N> → <what was fixed>]
-- Publish: rev <N>
+- Prompt: prompts/w<N>.md (<N> lines), canal <x> — pasted once
+- [Re-prompt <n>: <what was missing or wrong in the prompt>]
+- [Deviation: <what Mentor did instead> → <how resolved>]
+- Compare: <N> differences — <N> reconciled, <N> accepted (fidelidade <x>)
 - Gate: PASS
 - Tests: <N>/<N> pass
 - Status: DONE
 ```
 
-Include deviation/fix lines only when something actually happened.
-Every timestamp from `date "+%H:%M:%S"` — never estimated.
-Write the entry once per wave, when the wave closes.
+Bracketed lines only when something happened. Every re-prompt reason is one
+line — that list is the entire input to the retrospective.
 
 ---
 
 ## Never
 
 - Auto-publish. Publishing is a human decision every time.
-- Report a wave complete on `change_applied` or a clean publish alone. Read the model back. Click the feature.
-- Blame Context Service lag without checking the row timestamp first.
-- Fire the next wave on a failed gate or red tests.
-- Loosen a test to make a wave pass — fix the app or amend the spec and the test together.
-- Poll faster than every 60 seconds — each poll consumes a model turn.
-- Call `eSpace.AddDependency` — known broken. Surface needed references for manual wiring.
+- Paste a prompt that differs from what is in `prompts/wN.md`. Edit the file first.
+- Report a wave complete on Mentor's own account of what it did. Click it.
+- Advance on a failed gate or red tests.
+- Loosen a test to make a wave pass. Fix the app, or amend spec and test together.
+- Re-send a full wave prompt after a partial success.
 - Create placeholder screens for a future wave's links.
 - Put a hex literal in a screen or block.
-- Re-publish on a 404 `publish_status` — check `app_revisions` first.
-- Delegate fire-and-poll to a subagent. Subagents fabricate durations.
-- Trust a zero-artifact count on a seconds-old app — the Context Service indexes asynchronously.
+- Let a reconcile loop run past two rounds on a `secundária` screen.
+- Describe a component instead of naming the OutSystems UI block.
 
 ---
 
-## Pre-production checklist
+## PoC handover checklist
 
-Work through this before any promotion beyond Development:
-
-- [ ] `DemoModeEnabled` (if used) defaults to `False` — stubs must fail loudly, not return synthetic data
-- [ ] Every row where `IsSyntheticData = True` has been reviewed and removed or marked
-- [ ] All external boundaries (AI, document extraction) have real implementations, not stubs
-- [ ] No screen is anonymous/public if the app requires authentication
-- [ ] Theme contrast ratios verified (secondary text on surface background ≥ 4.5:1)
-- [ ] No `data-test` attributes left that exist only for testing
-- [ ] `.env`, credentials, and test auth files are git-ignored
+For a project classified **PoC**. See `templates/POC-HANDOVER.md`. Do not run
+upstream's pre-production checklist against a PoC — synthetic data and stubs are
+deliverables here, not debt.
 
 ---
 
-## Retrospective (fill after last committed wave)
+## Retrospective (fill after the last committed wave)
 
-Answer from the timing log, not from memory:
+Answer from the log, not from memory:
 
-1. Which waves needed more than one turn, and why? (spec too large, too vague, or wrong?)
-2. Which gate caught a real defect that looked correct on screen?
-3. Which Playwright tests were flaky, and what made them flaky?
-4. What did Mentor get wrong repeatedly? (Add each to the wave prompt guardrails.)
-5. What did this RUNBOOK say that turned out to be wrong? (Fix it before the next project.)
+1. Which waves needed a re-prompt, and what was missing from the prompt?
+2. Which differences did Compare find that the static gate could not?
+3. Which of those became accepted diffs, and did anyone notice in the demo?
+4. What did Mentor get wrong more than once? Each repeat goes into
+   `skill/references/prototype-to-widgets.md` or the guardrails — once is
+   anecdote, twice is a rule.
+5. What did this RUNBOOK say that turned out to be wrong?
 
-Then: produce the next version of the plan in a new folder. Carry forward what held. Drop what did not.
+Then produce the next project's plan in a new folder. Carry forward what held.
