@@ -72,6 +72,13 @@ Every version gets an entry. See format below.
 
 ## Handling upstream updates
 
+### One-time setup (skip if already configured)
+
+```bash
+git remote add upstream https://github.com/rodginez/outsystems-plan.git
+git fetch upstream
+```
+
 ### Scenario 1: Upstream releases a patch (e.g., v0.7.1)
 
 Decide: does it affect Mentor Studio?
@@ -87,7 +94,13 @@ git rebase upstream/main
 
 # Resolve conflicts if any. Most conflicts will be in SKILL.md, RUNBOOK.md, spec-wave.md
 # These diverge on purpose, so keep your version and note the delta.
+```
 
+> ⚠️ `git push -f` rewrites shared history. Confirm with anyone else working on
+> `mentor-studio` before force-pushing, and never force-push over work you have
+> not personally rebased.
+
+```bash
 git push -f origin mentor-studio
 git tag -a v0.7.1-ms.1 -m "Rebase on upstream v0.7.1"
 git push origin v0.7.1-ms.1

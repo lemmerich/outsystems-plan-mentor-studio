@@ -5,3 +5,9 @@ node_modules/
 tests/.auth/
 **/.auth/user.json
 playwright-report/
+
+# Local editor/vault config, not part of the project
+.obsidian/
+
+# Local git bundle backups
+*.bundle

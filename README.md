@@ -12,18 +12,14 @@ changed, why, and the file-by-file status.
 ## Versioning
 
 This fork uses **semantic versioning with a fork suffix**: `<upstream-version>-ms.<fork-iteration>`.
+Current: **v0.7.0-ms.1**, based on upstream v0.7.0 (commit `aae2e14`).
 
-- **Upstream v0.7.0** is the base (commit `aae2e14`)
-- **v0.7.0-ms.1** is the first iteration of this fork (initial Mentor Studio adaptation)
-- **v0.7.0-ms.2**, etc. are follow-up evolutions without upstreaming
-- When upstream ships v0.8.0, rebase/merge decisions start [here](VERSIONING.md)
-
-See [`VERSIONING.md`](VERSIONING.md) for the full strategy: how to evolve this fork,
-when to rebase on upstream, and how to document it all.
-
-**Change log:** [`CHANGELOG.md`](CHANGELOG.md)
-
-**Original upstream:** [`README-upstream.md`](README-upstream.md)
+| Doc | Answers |
+|---|---|
+| [`CHANGELOG.md`](CHANGELOG.md) | What changed, release by release |
+| [`DELTA.md`](DELTA.md) | Why this fork exists, and how it differs structurally from upstream |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to release, tag, and rebase on upstream |
+| [`README-upstream.md`](README-upstream.md) | Upstream's README, frozen at the fork point (historical reference only) |
 
 ---
 

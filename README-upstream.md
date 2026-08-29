@@ -1,3 +1,13 @@
+> **Frozen snapshot.** This is upstream's README as of `rodginez/outsystems-plan`
+> v0.7.0 (commit `aae2e14`), the point this fork was created from. It is kept
+> for historical reference only and will **not** be updated — for upstream's
+> current state, see the live repo:
+> [rodginez/outsystems-plan](https://github.com/rodginez/outsystems-plan), or
+> run `git fetch upstream` (see [`CONTRIBUTING.md`](CONTRIBUTING.md)). This
+> fork's own README is [`README.md`](README.md).
+
+---
+
 # outsystems-plan
 
 An AI skill for planning OutSystems projects built with ODC Mentor.

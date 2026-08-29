@@ -197,10 +197,8 @@ round of compare and reconcile later.
 keep unchanged here, so `git checkout upstream/main -- skill/references/prototype-to-widgets.md`
 resolves most merges. `SKILL.md` diverges on purpose.
 
-```bash
-git remote add upstream https://github.com/rodginez/outsystems-plan.git
-git fetch upstream
-```
+For the full rebase process (when to do it, how to tag the result, how to
+decide what to keep), see [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## What still needs validation
 
