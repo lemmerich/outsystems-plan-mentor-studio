@@ -1,207 +1,211 @@
-# DELTA — o que mudou em relação ao upstream
+# DELTA — What changed from upstream
 
-Fork de `rodginez/outsystems-plan` v0.7.0 (commit `aae2e14`).
+Fork of `rodginez/outsystems-plan` v0.7.0 (commit `aae2e14`).
 
-O upstream dirige o Mentor pelo MCP: dispara turno, faz poll, lê o modelo de
-volta com `context_entities` / `context_actions` / `context_screens` e publica.
-Aqui nada disso existe. O assistente é o chat do ODC Studio e quem cola é gente.
-A skill deixa de orquestrar e passa a emitir.
+Upstream drives Mentor through the MCP: fires a turn, polls, reads the model
+back with `context_entities` / `context_actions` / `context_screens` and publishes.
+None of that exists here. The assistant is the Mentor Studio chat in ODC Studio
+and humans do the pasting. The skill moves from orchestrating to emitting.
 
-O que o upstream aprendeu sobre Mentor e OutSystems UI ficou intacto. Por isso é
-fork e não reescrita.
-
----
-
-## O que foi mantido sem tocar
-
-- `skill/references/prototype-to-widgets.md` inteiro. É o ativo mais caro do
-  repositório: sete modos de falha reais na tradução HTML para OutSystems UI.
-- Teto rígido de **uma tela por onda**, 3 a 4 server actions, todas as entidades
-  do value path criadas até W2.
-- Princípio prototype-first e o protótipo cumulativo único, republicado na mesma
-  URL.
-- Ciclo de seis passos, incluindo o passo **Compare** (publicado versus protótipo
-  lado a lado, listar todas as diferenças antes de corrigir qualquer uma). Esse
-  passo é o que transforma o protótipo em contrato em vez de decoração.
-- Guardrails 1 a 7 verbatim.
-- Nomes de action proibidos (`Create<X>`, `Get<X>`, `Update<X>`, `Delete<X>` são
-  bloqueados silenciosamente pelo CRUD implícito do ODC).
-- `Text` sem tamanho declarado vira `Text(50)` sem aviso.
-- Lista de pitfalls de seletor do OutSystems UI (`Title` é `<span>`, `data-test`
-  de `TableRecords` cai no `<td>`, `LayoutSideMenu` usa role `menuitem`, label do
-  `Upload` não está ligado ao input).
-- Nunca rodar teste automaticamente; publicar é decisão humana.
-
-## 1. Canal: Emit + Paste no lugar de Fire + Poll
-
-Nova seção `## The channel: Mentor Studio, not MCP` no `SKILL.md`, e o passo 3 do
-ciclo virou **Emit**: a skill escreve `prompts/wN.md` e mostra o bloco; o operador
-cola, publica e volta dizendo o que aconteceu.
-
-Sumiram do log e do RUNBOOK: `runId`, `retries`, `change_applied`, intervalo de
-poll, `app_key`, `tenant`, `app_create`, `env_app`, `app_revisions`. Nenhuma
-linha de log pode sugerir que existem.
-
-O failure playbook foi reescrito inteiro. Os sintomas do upstream eram de
-protocolo (`change_applied: false`, run travado em `applyModelApiCode`, 404 em
-`publish_status`). Os daqui são observáveis: fez menos, fez mais, fez diferente,
-quebrou onda anterior.
-
-## 2. Gate estático virou manual, e isso está assumido
-
-Sem `context_*` não há contagem programática. O gate passou a ser leitura da
-module tree no ODC Studio pelo operador. É mais fraco e o texto diz que é mais
-fraco: pega "criou três telas em vez de uma", não pega tipo de atributo errado.
-A compensação é explícita, apoiar mais no Compare e nos testes, que são os únicos
-checks que sobraram feitos por máquina.
-
-## 3. Context pack por onda
-
-O upstream remanda "wave spec + SDD + design-system" a cada turno porque prompt
-de MCP é barato. No Studio, com humano colando, não cabe.
-
-Todo prompt abre com um context pack: só os módulos, entidades, telas e actions
-que essa onda toca, mais uma lista `DO NOT TOUCH` de nomes sem descrição
-(descrição em artefato que não deve ser tocado é convite para o Mentor melhorar).
-Gerado na hora a partir da tabela de ondas e das specs já concluídas. Nunca
-versionado: arquivo derivado que é guardado é arquivo que envelhece calado.
-
-Limites: 200 linhas por prompt, 8 itens em CHANGES. Passou disso, o Mentor começa
-a perder item do meio da lista e ninguém percebe até o Compare.
-
-## 4. Sem canal de imagem, então vai o HTML
-
-O upstream anexa screenshot do protótipo e gasta o guardrail 9 descrevendo em
-palavras o box model que a imagem não carrega. Aqui não existe imagem, e isso
-acabou virando vantagem: o prompt embute o **HTML e CSS podados daquela tela**.
-É texto, é o contrato literal, e carrega max-width, empilhamento e flex com
-exatidão em vez de aproximação.
-
-Regras de poda em `skill/references/mentor-studio-prompt.md`: uma tela só, sem
-switcher, sem JS, só o CSS que ainda casa com algo, linhas repetidas viram uma
-mais um comentário, e todo `data-test` preservado (é o que mais se perde na
-poda). Alvo 120 linhas, teto 200.
-
-Os fatos de box model continuam sendo escritos em prosa ao lado do markup. Três
-linhas de redundância, e o Mentor obedece restrição escrita melhor do que infere
-intenção a partir de CSS.
-
-**A verificar antes do primeiro projeto:** se o Mentor Studio aceitar anexo de
-imagem, mantenha o HTML podado assim mesmo e some o screenshot.
-
-## 5. Orçamento de reconcile e campo `fidelidade`
-
-O upstream faz 4 → 5 → 4 até não sobrar diferença, o que é certo quando
-reconciliar custa uma chamada de MCP. Aqui cada rodada custa copiar, colar, rodar
-e publicar com humano no meio.
-
-Duas rodadas por onda. Depois disso, as diferenças que sobraram são registradas
-como aceitas e a onda fecha. Exceção: onda com `fidelidade: demo`, tela que está
-no roteiro da demo, que tem rodadas ilimitadas porque aquela tela é o produto.
-O resto é cenário.
-
-Perseguir pixel em tela fora do caminho da demo é onde o ROI de POC morre.
-
-## 6. Campo `canal` e W0 de tema
-
-O upstream assume Mentor para tudo. Mentor Studio é bom alterando módulo que já
-existe e ruim criando estrutura do zero, então a primeira onda não é dele.
-
-Toda onda declara `canal: appgen | mentor-studio | manual`, com tabela de
-decisão no `SKILL.md`. Só onda `mentor-studio` gera `prompts/wN.md`.
-
-W0 fixa: app criado e tema montado sobre o OutSystems UI, via AppGen ou na mão,
-antes de qualquer onda de feature. Sem isso a paleta do protótipo não tem onde
-aterrissar e toda onda seguinte rediscute cor, e diretriz de design que chega no
-prompt como "usa o azul da marca" produz hex literal, que o gate rejeita.
-
-De W1 em diante, diretriz de design nomeia o bloco nativo (`Card`, `Tabs`,
-`ListItem`, `Columns2`). Prompt que diz "um container tipo card" recebe `<div>`.
-
-## 7. Fase de PoC: Step 0 e classificação
-
-O upstream vai da spec direto para a entrevista de 6 perguntas. Numa fábrica de
-POC a spec vem do cliente e costuma estar incompleta de um jeito que só aparece
-na W4, quando é cara.
-
-Novo `Step 0`: escrever `SPEC-REVIEW.md` (ambiguidades com a premissa que será
-assumida, contradições citadas, o que falta e não dá para pular, o que está fora
-de escopo) e obter aceite.
-
-E classificar o projeto como PoC ou aplicação final, explicitamente. A
-classificação muda decisão real: quantidade de módulos, se stub e seed sintético
-são feature ou dívida, se o modelo de dados sai das telas ou vem antes delas, e
-qual checklist de entrega vale.
-
-`templates/POC-HANDOVER.md` substitui o pre-production checklist do upstream para
-projetos PoC, e diz na cara que, se a POC for promovida, nada dele transfere.
-
-## 8. Value path virou roteiro de demo
-
-Mesma pergunta do upstream, resposta pedida em outro formato: a sequência exata
-de cliques que vai ser executada na frente do cliente, com o que aparece em cada
-passo.
-
-Escrita assim, ela faz três trabalhos: ordena as ondas, decide quais telas são
-`fidelidade: demo`, e é o `tests/demo.spec.ts`. Fica verbatim no RUNBOOK.
-
-## 9. Playwright: autenticação e a suíte que não pode quebrar
-
-- `auth.setup.ts` novo: loga uma vez e salva `storageState`. Reautenticar por
-  teste contra a tela de login do ODC é lento, instável, e é a primeira coisa que
-  derruba a suíte.
-- `playwright.config.ts` ganhou os projects `setup` e `e2e` com dependência, e
-  **o reporter HTML**. O upstream exige o reporter HTML no `SKILL.md` desde a
-  v0.5.0 mas o template ainda vinha com `reporter: 'list'`. Corrigido aqui.
-- `demo.spec.ts` separado das specs por onda. É a única suíte que precisa estar
-  verde antes de mostrar a POC. Spec de onda pode carregar diff aceito.
-- `.env.example` ganhou `APP_USER` e `APP_PASSWORD`.
-
-## 10. Guardrail 10, novo
-
-O upstream tem 9 guardrails. O décimo só faz sentido com humano no loop:
-
-> Se algo aqui for impossível, ou contradisser o que já está no módulo, pare e
-> diga, em vez de improvisar um contorno.
-
-Com MCP, um Mentor que para é um turno perdido. Aqui é uma pergunta que o
-operador responde em um minuto, enquanto uma improvisação silenciosa só é
-descoberta uma rodada inteira de compare e reconcile depois.
+Everything upstream learned about Mentor and OutSystems UI remains unchanged.
+That is why this is a fork and not a rewrite.
 
 ---
 
-## Arquivos
+## What was kept unchanged
 
-| Arquivo | Situação |
+- `skill/references/prototype-to-widgets.md` in full. It is the repository's most
+  valuable asset: seven real failure modes in the HTML-to-OutSystems-UI translation.
+- Hard cap of **one screen per wave**, 3 to 4 server actions, all value-path
+  entities created by W2.
+- Prototype-first principle and single cumulative prototype, republished to the
+  same URL.
+- Six-step cycle, including the **Compare** step (published vs. prototype side
+  by side, list all diffs before fixing any). This step is what transforms the
+  prototype from decoration into contract.
+- Guardrails 1–7 verbatim.
+- Forbidden action names (`Create<X>`, `Get<X>`, `Update<X>`, `Delete<X>` are
+  silently blocked by ODC's implicit CRUD).
+- `Text` without declared size becomes `Text(50)` without warning.
+- List of OutSystems UI selector pitfalls (`Title` is `<span>`, `data-test` on
+  `TableRecords` lands in `<td>`, `LayoutSideMenu` uses role `menuitem`, `Upload`
+  label is not wired to the input).
+- Never run tests automatically; publishing is a human decision.
+
+## 1. Channel: Emit + Paste instead of Fire + Poll
+
+New section `## The channel: Mentor Studio, not MCP` in `SKILL.md`, and step 3
+of the cycle became **Emit**: the skill writes `prompts/wN.md` and shows it in a
+fenced block; the operator pastes, publishes and comes back saying what happened.
+
+Removed from logs and RUNBOOK: `runId`, `retries`, `change_applied`, poll
+interval, `app_key`, `tenant`, `app_create`, `env_app`, `app_revisions`. No log
+line may suggest these exist.
+
+The failure playbook was rewritten entirely. Upstream symptoms were protocol-level
+(`change_applied: false`, run stuck in `applyModelApiCode`, 404 on
+`publish_status`). Here they are observable: did less, did more, did different,
+broke previous wave.
+
+## 2. Static gate became manual, and that is accepted
+
+Without `context_*` there is no programmatic count. The gate became a short
+read-back the operator performs on the module tree in ODC Studio. It is weaker
+and the text says it is weaker: catches "created three screens instead of one",
+does not catch wrong attribute type. The compensation is explicit: lean harder
+on Compare and on tests, which are the only checks left that a machine performs.
+
+## 3. Context pack per wave
+
+Upstream re-sends "wave spec + SDD + design-system" on every turn because an MCP
+prompt is cheap. In Studio, with a human pasting, that does not fit.
+
+Every prompt opens with a context pack: only the modules, entities, screens and
+actions that this wave touches, plus a `DO NOT TOUCH` list of names without
+description (description in an artifact that must not be touched is an invitation
+for Mentor to improve it). Generated at emit time from the wave table and
+completed specs. Never versioned: a derived file that gets stored is a file that
+goes stale silently.
+
+Limits: 200 lines per prompt, 8 items in CHANGES. Past that, Mentor starts
+dropping items from the middle of the list and nobody notices until Compare.
+
+## 4. No image channel — so send the HTML, not a description of it
+
+Upstream attaches a prototype screenshot and spends guardrail 9 describing in
+words the box-model facts the picture cannot carry. Here there is no image at
+all, which turned out to be an advantage: embed the **pruned HTML and CSS of that
+screen**. It is text, it is the literal contract, and it carries max-width,
+stacking and flex exactly instead of approximately.
+
+Pruning rules in `skill/references/mentor-studio-prompt.md`: one screen only, no
+nav switcher, no JS, only CSS that still matches something, repeated lines become
+one line plus a comment, every `data-test` preserved (it is what most gets lost
+in pruning). Target 120 lines, cap 200.
+
+Box-model facts continue to be written in prose alongside the markup. Three lines
+of redundancy, and Mentor obeys written constraints better than it infers
+intention from CSS.
+
+**Verify before the first project:** if Mentor Studio build in use accepts image
+attachments, keep the pruned HTML anyway (it is strictly more precise) and add
+the screenshot on top.
+
+## 5. Reconcile budget and `fidelidade` field
+
+Upstream reconciles 4 → 5 → 4 until no diffs remain, which is right when
+reconciliation costs an MCP call. Here each round costs copy-paste-run-publish
+with a human in the middle.
+
+Two rounds per wave. After that, remaining diffs are recorded as accepted and
+the wave closes. Exception: waves with `fidelidade: demo`, screens in the demo
+script, get unlimited rounds because that screen IS the product. The rest is
+scenery.
+
+Chasing pixels on a screen outside the demo path is where POC ROI dies.
+
+## 6. `channel` field and W0 theming
+
+Upstream assumes Mentor for everything. Mentor Studio is good at changing an
+existing module and bad at creating structure from scratch, so the first wave
+is not its job.
+
+Every wave declares `channel: appgen | mentor-studio | manual`, with decision
+table in `SKILL.md`. Only `mentor-studio` waves generate `prompts/wN.md`.
+
+W0 is fixed: app created and theme set up on OutSystems UI, via AppGen or by
+hand, before any feature wave. Without it, the prototype's palette has nowhere
+to land and every following wave re-debates color, and a design guideline that
+arrives in the prompt as "use the brand blue" produces literal hex, which the
+gate rejects.
+
+From W1 onward, design guidelines name the native block (`Card`, `Tabs`,
+`ListItem`, `Columns2`). A prompt that says "a card-like container" gets `<div>`.
+
+## 7. PoC phase: Step 0 and classification
+
+Upstream goes from spec straight to the six-question interview. In a PoC factory,
+the spec comes from the client and is usually incomplete in a way that only
+shows up in W4, when it is expensive.
+
+New `Step 0`: write `SPEC-REVIEW.md` (ambiguities with the assumption to be made,
+contradictions noted, what is missing and cannot be skipped, what is out of
+scope) and get sign-off.
+
+And classify the project as PoC or production application, explicitly. The
+classification changes real decisions: number of modules, whether stub and
+synthetic seed are features or debt, whether the data model comes from screens
+or precedes them, and which handover checklist applies.
+
+`templates/POC-HANDOVER.md` replaces upstream's pre-production checklist for PoC
+projects, and plainly states: if the PoC is promoted, none of this transfers.
+
+## 8. Value path became demo script
+
+Same question as upstream, answer in a different format: the exact sequence of
+clicks that will be performed in front of the client, with what appears at each
+step.
+
+Written that way, it does three jobs: orders the waves, decides which screens are
+`fidelidade: demo`, and IS the `tests/demo.spec.ts`. It stays verbatim in RUNBOOK.
+
+## 9. Playwright: authentication and the suite that cannot break
+
+- `auth.setup.ts` new: logs in once and saves `storageState`. Re-authenticating
+  per test against ODC's login screen is slow, flaky, and the first thing that
+  breaks the suite.
+- `playwright.config.ts` gained `setup` and `e2e` projects with dependency, and
+  **the HTML reporter**. Upstream has required the HTML reporter in `SKILL.md`
+  since v0.5.0 but the template still came with `reporter: 'list'`. Fixed here.
+- `demo.spec.ts` separate from wave specs. It is the only suite that must be
+  green before showing the POC. Wave spec can carry accepted diff.
+- `.env.example` gained `APP_USER` and `APP_PASSWORD`.
+
+## 10. Guardrail 10, new
+
+Upstream has 9 guardrails. The tenth only makes sense with a human in the loop:
+
+> If anything here is impossible or contradicts what is already in the module,
+> stop and say so, instead of improvising a workaround.
+
+With MCP, a Mentor that stops is a lost turn. Here it is a question the operator
+answers in one minute, whereas silent improvisation is only discovered a full
+round of compare and reconcile later.
+
+---
+
+## Files
+
+| File | Status |
 |---|---|
-| `skill/SKILL.md` | adaptado (nova seção de canal, Step 0, canal/fidelidade, guardrails 8-10, log sem MCP) |
-| `skill/references/prototype-to-widgets.md` | intacto |
-| `skill/references/mentor-studio-prompt.md` | novo |
-| `templates/RUNBOOK.md` | reescrito |
-| `templates/spec-wave.md` | adaptado (canal, fidelidade, DO NOT TOUCH, stall) |
-| `templates/wave-prompt.md` | novo |
-| `templates/SPEC-REVIEW.md` | novo |
-| `templates/POC-HANDOVER.md` | novo |
-| `templates/playwright.config.ts` | adaptado (reporter HTML, projects, storageState) |
-| `templates/tests/auth.setup.ts` | novo |
-| `templates/.env.example` | adaptado |
-| `README.md` | do fork; o original virou `README-upstream.md` |
+| `skill/SKILL.md` | adapted (new channel section, Step 0, channel/fidelidade, guardrails 8-10, log without MCP) |
+| `skill/references/prototype-to-widgets.md` | unchanged |
+| `skill/references/mentor-studio-prompt.md` | new |
+| `templates/RUNBOOK.md` | rewritten |
+| `templates/spec-wave.md` | adapted (channel, fidelidade, DO NOT TOUCH, stall) |
+| `templates/wave-prompt.md` | new |
+| `templates/SPEC-REVIEW.md` | new |
+| `templates/POC-HANDOVER.md` | new |
+| `templates/playwright.config.ts` | adapted (HTML reporter, projects, storageState) |
+| `templates/tests/auth.setup.ts` | new |
+| `templates/.env.example` | adapted |
+| `README.md` | from fork; original became `README-upstream.md` |
 
-## Rebase no upstream
+## Rebase on upstream
 
-O `prototype-to-widgets.md` é o arquivo que mais vai receber melhoria lá em cima
-e é o que aqui está intacto, então `git checkout upstream/main -- skill/references/prototype-to-widgets.md`
-resolve a maior parte dos merges. O `SKILL.md` diverge de propósito.
+`prototype-to-widgets.md` gets the most improvements upstream and is what we
+keep unchanged here, so `git checkout upstream/main -- skill/references/prototype-to-widgets.md`
+resolves most merges. `SKILL.md` diverges on purpose.
 
 ```bash
 git remote add upstream https://github.com/rodginez/outsystems-plan.git
 git fetch upstream
 ```
 
-## O que ainda não foi validado
+## What still needs validation
 
-1. Mentor Studio aceita imagem? Muda o item 4.
-2. 200 linhas é o teto certo de prompt? Chute calibrado, não medido.
-3. Duas rodadas de reconcile é o número certo? Idem.
-4. HTML podado funciona melhor que prosa descrevendo layout? É a aposta central
-   do fork e a primeira coisa a testar numa onda real.
+1. Does Mentor Studio accept image attachments? Changes item 4.
+2. Is 200 lines the right cap for prompts? Calibrated guess, not measured.
+3. Is two reconcile rounds the right number? Same.
+4. Does pruned HTML work better than prose describing layout? It is the central
+   bet of this fork and the first thing to test on a real wave.
