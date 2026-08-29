@@ -9,7 +9,7 @@ description: >
   test scaffolding. Every wave is prototyped in HTML and approved BEFORE Mentor
   ever touches it — the prototype, not ASCII art, is the screen's source of
   truth. Use when starting a new OutSystems project or planning a new feature
-  set: "plan this project", "quebrar em ondas", "criar plano a partir do SDD",
+  set: "plan this project", "break into waves", "create plan from SDD",
   "start planning".
   FORK - Mentor Studio channel: this variant assumes no OutSystems MCP. Every
   wave's prompt is EMITTED for a human to paste into the ODC Studio assistant,
@@ -501,9 +501,9 @@ One sentence. What can a human do and verify after this wave is published?
 - No data model changes: [yes/no]
 
 ### Screen layout
-**Referência visual aprovada**: link do protótipo HTML (Artifact URL) +
-qual aba/estado dele é esta tela. This is the primary reference — the
-pruned markup and CSS for this tab go verbatim into `prompts/wN.md`; there is no
+**Approved visual reference**: HTML prototype link (Artifact URL) +
+which tab/state this screen is on. This is the primary reference — the
+pruned markup and CSS for this screen go verbatim into `prompts/wN.md`; there is no
 image channel (see "The channel"). An ASCII sketch may follow as a quick summary of field grouping, but it is never the sole
 reference; if a prototype does not exist yet for this screen, one must be
 built and approved (see "The prototype-first principle") before this
@@ -545,7 +545,7 @@ failure modes behind each of these three facts.
   unbounded reconcile loop and a case in `demo.spec.ts`. Everything else is
   `secundária`: two reconcile rounds, then accept the diff and log it.
 - Set `canal:` deliberately. Only `mentor-studio` waves get a `prompts/wN.md`.
-- Quote every user-facing message verbatim. "Formato inválido. Envie um PDF." not "a validation message."
+- Quote every user-facing message verbatim. "Invalid format. Please upload a PDF." not "a validation message."
 - Mark every `Text` field that must be truly unbounded — Mentor silently creates them as `Text(50)` otherwise.
 - The out-of-scope section must name what the previous wave owns (so Mentor cannot helpfully rebuild it) and what the next wave will own (so it does not build ahead).
 - Write a `§10 — If this wave stalls` section naming where to split the wave if Mentor times out (~30 min without a terminal state).
