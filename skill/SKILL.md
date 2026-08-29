@@ -1,6 +1,8 @@
 ---
 name: outsystems-plan-mentor-studio
 version: "0.7.0-ms.1"
+date: "2026-02-20"
+upstream: "0.7.0"
 description: >
   Guides you from a blank folder to a complete OutSystems build plan through
   a short interactive interview. Reads your spec and reference screens, proposes

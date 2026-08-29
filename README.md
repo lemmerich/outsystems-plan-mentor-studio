@@ -1,19 +1,29 @@
 # outsystems-plan — Mentor Studio fork
 
 Fork of [rodginez/outsystems-plan](https://github.com/rodginez/outsystems-plan)
-(v0.7.0) for a **PoC factory driven from Mentor Studio instead of the OutSystems
-MCP**. Upstream's README is kept as `README-upstream.md`.
-
-Upstream fires Mentor programmatically: it starts a turn, polls it, reads the
-model back with `context_*` and publishes. This fork assumes none of that
-exists. The assistant is the chat inside ODC Studio, and a human does the
-pasting, so the skill's job changes from *orchestrating* to *emitting*: it
-produces one paste-ready prompt per wave and then verifies what came back.
+(v0.7.0) adapted for **PoC delivery driven from Mentor Studio (ODC assistant) instead
+of the OutSystems MCP**. The assistant is the chat inside ODC Studio, and humans do
+the pasting — the skill moves from *orchestrating* to *emitting*.
 
 Everything upstream learned about Mentor and OutSystems UI is kept unchanged —
-that is why this is a fork and not a rewrite.
+that is why this is a fork and not a rewrite. See [`DELTA.md`](DELTA.md) for what
+changed, why, and the file-by-file status.
 
-**What changed and why: [`DELTA.md`](DELTA.md).**
+## Versioning
+
+This fork uses **semantic versioning with a fork suffix**: `<upstream-version>-ms.<fork-iteration>`.
+
+- **Upstream v0.7.0** is the base (commit `aae2e14`)
+- **v0.7.0-ms.1** is the first iteration of this fork (initial Mentor Studio adaptation)
+- **v0.7.0-ms.2**, etc. are follow-up evolutions without upstreaming
+- When upstream ships v0.8.0, rebase/merge decisions start [here](VERSIONING.md)
+
+See [`VERSIONING.md`](VERSIONING.md) for the full strategy: how to evolve this fork,
+when to rebase on upstream, and how to document it all.
+
+**Change log:** [`CHANGELOG.md`](CHANGELOG.md)
+
+**Original upstream:** [`README-upstream.md`](README-upstream.md)
 
 ---
 
