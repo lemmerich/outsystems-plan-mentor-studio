@@ -9,11 +9,63 @@ they sit in.
 
 ---
 
+## 0. File format — a fence is a prompt, prose is a note
+
+`prompts/wN.md` is not itself "the prompt" — it is a small document that may
+contain **one or more** paste-ready prompts (one per artifact the wave
+touches, see "Waves that touch more than one artifact" below) plus whatever
+the operator needs to understand around them. Those two things must never
+share a text block, or the operator ends up guessing where to stop copying.
+
+**The rule: everything meant for Mentor Studio's clipboard lives inside one
+fenced code block per artifact. Everything else — why this order, what to
+verify after, why a design call was made — is prose outside the fence,
+always opened with `> **Nota do operador (não copiar):**`.** A fence is
+self-contained: it includes its own guardrails, context, objective, changes,
+markup and expected result inline, in the order in Section 1 below, so the
+operator never has to assemble a paste from a shared block up top plus a
+per-module block further down. Immediately before each fence, one bold line
+names which artifact's Mentor Studio session it goes into:
+
+```markdown
+## Módulo alvo: <ArtifactName>
+
+> **Nota do operador (não copiar):** <why this module/order — optional>
+
+**Cole o bloco abaixo inteiro na sessão do Mentor Studio de `<ArtifactName>`:**
+
+​```
+CONTEXT
+...
+DO NOT TOUCH
+...
+OBJECTIVE
+...
+CHANGES
+...
+PROTOTYPE MARKUP
+...
+LAYOUT FACTS
+...
+GUARDRAILS
+...
+EXPECTED
+...
+​```
+
+> **Nota do operador (não copiar):** <what to check after pasting — optional>
+```
+
+A file with two artifacts has two such fenced blocks, each complete on its
+own. Never split one artifact's prompt across two fences, and never let a
+fence contain a sentence addressed to the operator rather than to Mentor.
+
 ## 1. Anatomy
 
-A Mentor Studio prompt has eight blocks, always in this order. The order is not
-cosmetic: Mentor weights the top of the prompt more heavily, so scope and
-context come before the work, and the work comes before the verification.
+A Mentor Studio prompt has eight blocks, always in this order, **all inside
+the same fence** (see Section 0). The order is not cosmetic: Mentor weights
+the top of the prompt more heavily, so scope and context come before the
+work, and the work comes before the verification.
 
 ```
 CONTEXT        what already exists, in this app, that this wave touches
@@ -22,7 +74,7 @@ OBJECTIVE      one sentence
 CHANGES        numbered, atomic, verifiable
 PROTOTYPE MARKUP  the pruned HTML+CSS for this screen
 LAYOUT FACTS   box model in words (max-width, stacking, min-width:0)
-GUARDRAILS     the ten standing rules, verbatim, every time
+GUARDRAILS     the ten-to-twelve standing rules, verbatim, every time
 EXPECTED       what must be true when you are done
 ```
 
@@ -86,6 +138,41 @@ Say what the markup is, so it does not get transcribed literally:
 
 > The block below is the approved prototype for this screen. It is the layout
 > contract, not code to paste. Reproduce it with OutSystems UI blocks.
+
+## 3b. Waves that touch more than one artifact
+
+Some waves need both a web-app change and an Agentic App change to land — a
+screen that calls an agent is the usual shape (see main SKILL.md, "The
+channel," consequence 5). One `prompts/wN.md` still covers the whole wave;
+it just contains more than one fenced prompt, each under its own
+`## Módulo alvo: <Name>` heading, per the file format in Section 0:
+
+```markdown
+## Módulo alvo: <AgenticAppName>
+​```
+CONTEXT ... DO NOT TOUCH ... OBJECTIVE ... CHANGES ... GUARDRAILS ... EXPECTED ...
+​```
+
+## Módulo alvo: <WebAppName>
+​```
+CONTEXT ... DO NOT TOUCH ... OBJECTIVE ... CHANGES ... PROTOTYPE MARKUP ...
+LAYOUT FACTS ... GUARDRAILS ... EXPECTED ...
+​```
+```
+
+Each fence is a complete, independent anatomy block (Section 1) — an Agentic
+App fence simply has no PROTOTYPE MARKUP/LAYOUT FACTS (agents have no
+screen), and skips those lines rather than leaving them empty. The operator
+opens the named artifact's own Mentor Studio session and pastes only that
+one fence into it — nothing above or below it. The 200-line ceiling applies
+**per fence**, not to the whole file — a two-module wave prompt can run to
+400 lines total across both fences and still be a one-paste-per-module wave.
+
+Order the sections so the artifact with no dependency on the other comes
+first — usually the Agentic App (a screen calling an agent needs the agent to
+already exist; an agent does not need the screen to exist). State that
+dependency as a one-line note at the top of the file so the operator does not
+paste the web-app section first and hit a missing reference.
 
 ## 4. When Mentor comes back wrong
 

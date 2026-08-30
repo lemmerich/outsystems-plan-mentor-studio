@@ -1,7 +1,7 @@
 ---
 name: outsystems-plan-mentor-studio
-version: "0.7.0-ms.1"
-date: "2026-02-20"
+version: "0.7.0-ms.2"
+date: "2026-08-30"
 upstream: "0.7.0"
 description: >
   Guides you from a blank folder to a complete OutSystems build plan through
@@ -96,6 +96,40 @@ roughly 200 lines, the wave is too big.
 **Verify before the first project:** if the Mentor Studio build in use does
 accept image attachments, keep the pruned HTML anyway (it is strictly more
 precise) and add the screenshot on top.
+
+**5. A project can span more than one ODC artifact — provision them all before W0.**
+A web app is not the only artifact type Mentor Studio edits: an Agentic App
+(an Agent Workbench agent) is a separate artifact with its own module tree,
+and a project that needs an AI agent needs at least one of each. Creating
+these mid-plan means later prompts either guess at names or get renamed
+out from under them. Instead, run a manual **Step 0 — Provisioning** before
+any wave: the operator creates every artifact the plan will touch — the web
+app and each Agentic App — empty, in ODC, with the **final names fixed up
+front**. Record them in the RUNBOOK under "Project facts" as a small table
+(artifact name → type → which waves touch it). Every wave prompt from then
+on opens each of its sections with `Módulo alvo: <ArtifactName>` so the
+operator knows which ODC module to have open before pasting that section.
+
+This does not relax the one-testable-outcome-per-wave rule (see "The core
+principle" below) — a wave is still sized by what a human can click and
+verify at the end, never by "one artifact, one wave." A wave whose outcome
+needs both an agent configured and a screen that calls it is **one wave**
+with a prompt split into two `Módulo alvo` sections, pasted into two
+different Mentor Studio sessions in sequence, gated together once both
+land. Splitting by artifact instead would produce a wave that ends with an
+agent nobody can see working — exactly the kind of non-verifiable wave the
+core principle exists to prevent.
+
+**Step 0 — Provisioning is not a wave, and it never gets a wave number.**
+Creating an empty artifact has nothing a human can click or verify — it
+fails the core principle outright — so it does not belong in the wave table
+(no `W0`, no `W-1`, no row at all) and it gets no `spec-w0.md` or
+`prompts/w0.md` of its own. It lives entirely as its own section in
+RUNBOOK.md: the provisioned-artifacts table (name, type, which waves carry
+a `Módulo alvo:` section for it) plus a one-line instruction to create them
+manually, empty, before anything else starts. `W0` is still the first
+*wave* — the theme wave — and starts only once Step 0's table is fully
+checked off.
 
 ---
 
@@ -375,6 +409,12 @@ This determines:
 Studio in the IDE, Mentor MCP. They are not interchangeable and every wave gets
 a `canal:`.
 
+**Also ask whether the plan needs any AI agent (Agent Workbench).** If yes,
+each agent is a separate Agentic App artifact, provisioned manually before
+W0 (see consequence 5 under "The channel," above) with its final name fixed
+up front. Note in the RUNBOOK which waves will carry a `Módulo alvo:`
+section for each agent — this is decided now, not improvised at emit time.
+
 ### Question 6 — Confirm the wave proposal
 
 After answering questions 1–4, **propose the wave breakdown** before generating
@@ -449,13 +489,20 @@ wave.
 
 | Wave shape | Channel | Why |
 |---|---|---|
-| Create the app, base theme, shell | AppGen or by hand | Studio has no reliable start-from-empty behaviour; AppGen produces a coherent baseline in one shot |
+| Create every ODC artifact empty, with final names (Step 0 — Provisioning) | manual | neither AppGen nor Mentor Studio should be the first thing to name an artifact other waves will reference |
+| Base theme + shell on the provisioned web app | AppGen or by hand | Studio has no reliable start-from-empty behaviour; AppGen produces a coherent baseline in one shot |
 | Theme refinement on an existing app | Mentor Studio | it is a variables-and-CSS edit, which Studio does well |
 | One screen plus up to 4 actions | Mentor Studio | the default |
+| Configuring one Agentic App (an agent's inputs/outputs/instructions) | Mentor Studio, targeting that Agentic App's own module | agents are edited the same conversational way, just in a different artifact |
 | Bulk repetitive change across many artifacts | MCP, if available | pasting the same prompt eight times is not a plan |
 
 Every wave spec states its `canal:` on the header line. A wave whose channel is
 not Mentor Studio still gets a spec and a gate; it just gets no `prompts/wN.md`.
+
+**A wave touching more than one artifact gets one `prompts/wN.md` with more
+than one `Módulo alvo` section** — see consequence 5 above. Do not create a
+separate `prompts/wN-agentapp.md`; one file, sectioned, keeps the wave's
+"one thing to hand the operator" property intact.
 
 ### W0 — theme first, always
 
@@ -465,6 +512,30 @@ every later wave re-litigates it, and design direction that reaches a prompt as
 "use the brand blue" produces a hex literal, which the gate then rejects. W0's
 output is a theme whose variables later prompts refer to **by name**, and a shell
 that renders.
+
+**W0 has two parts, and the second one is a Mentor Studio prompt, not just
+AppGen.** Part 1 (manual/AppGen): create the app on the artifact provisioned
+in Step 0, base OutSystems UI theme, shell/nav that renders. Part 2 (Mentor
+Studio, `prompts/w0.md`): apply the actual theme tokens and, critically,
+**build a permanent "Tema & Identidade Visual" screen** — color swatches
+labeled with their token name (not just the swatch), a contrast check
+between text and background pairs, a typography specimen (each face/weight
+in use), the icon set, and every reusable state (button variants, status
+pills, badges) rendered side by side. This is what gives W0 the same
+"something a human can click and verify" property every other wave has —
+without it, W0's gate is entirely a human's word that the theme "looks
+right," which is exactly the kind of unverifiable wave the core principle
+forbids. Keep this screen in the app permanently (a `/tema` route reachable
+by URL, or a sidebar item if the project's IA allows it) — it earns its keep
+again every time a later wave's Compare step needs to check a color or a
+component state against the source of truth instead of eyeballing it.
+
+**The living prototype gets the same screen, and gets it first.** Before
+building any feature screen in the prototype, build its Tema/Identidade
+Visual screen using the same tokens documented in the RUNBOOK's theme
+table (see Step 6) — this is what Question 3's palette decision (see Step
+1) graduates into once approved, and it is the reference every subsequent
+prototype screen is built against for consistency.
 
 From W1 on, design direction in a wave prompt names the native OutSystems UI
 block it maps to (`Card`, `Tabs`, `ListItem`, `Columns2`), never a generic
@@ -661,7 +732,7 @@ The RUNBOOK is the operator's guide. It is generated once at plan creation and
 updated as waves execute. It contains:
 
 1. **Resumption pointer** — `## Current wave` updated to the active wave before each fire
-2. **Project facts** — app name, module names, classification (PoC or final application), and the demo script verbatim
+2. **Project facts** — classification (PoC or final application), the demo script verbatim, and the **provisioned artifacts table**: one row per ODC artifact (web app, each Agentic App) with its fixed name and which waves carry a `Módulo alvo:` section for it. Every artifact in this table must exist, empty, before W0 starts (Step 0 — Provisioning).
 3. **Wave table** — name, scope summary, committed vs deferred, status
 4. **Living prototype pointer** — the Artifact URL of the cumulative HTML
    prototype (see "The prototype-first principle"), plus a one-line rule:
@@ -733,6 +804,17 @@ GUARDRAILS (apply to every screen and action in this wave):
     instead of improvising a workaround. There is a human reading your answer
     who can re-plan in a minute; a silent improvisation costs a full
     compare-and-reconcile round to even discover.
+
+11. If this wave calls an AI agent (Agent Workbench), the call MUST be
+    asynchronous via the ODC event mechanism (publish/subscribe) — never a
+    synchronous call that blocks the UI waiting for the agent's response.
+    The screen must reflect a "processing" state until the completion event
+    is received.
+
+12. If this prompt has more than one `Módulo alvo:` section, paste each
+    section into that artifact's own Mentor Studio session — never paste a
+    web-app section into an Agentic App's session or vice versa. Each
+    section is otherwise self-contained and independently gated.
 ```
 
 ---
@@ -755,6 +837,8 @@ GUARDRAILS (apply to every screen and action in this wave):
 - [ ] RUNBOOK has the failure playbook and never list
 - [ ] SPEC-REVIEW.md exists and its assumptions were signed off
 - [ ] The project is classified PoC or final application in the RUNBOOK header
-- [ ] Every `mentor-studio` wave has a `prompts/wN.md` under 200 lines
+- [ ] Every `mentor-studio` wave has a `prompts/wN.md` under 200 lines per fence
 - [ ] Every wave has `canal:` and `fidelidade:` set deliberately, not defaulted
 - [ ] The demo script is in the RUNBOOK verbatim and covered by `demo.spec.ts`
+- [ ] Every `prompts/wN.md` prompt is a single self-contained fenced code block per `Módulo alvo:` (guardrails included inline) — no prose the operator must merge in before pasting, and every non-prompt line outside a fence is marked `> **Nota do operador (não copiar):**`
+- [ ] Step 0 — Provisioning has no wave number and no row in the wave table — it is its own RUNBOOK section only

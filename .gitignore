@@ -11,3 +11,6 @@ playwright-report/
 
 # Local git bundle backups
 *.bundle
+
+# POC projects generated via the skill — kept local, not part of the fork
+projects/

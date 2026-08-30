@@ -8,6 +8,53 @@ and this project uses semantic versioning with a fork suffix:
 
 ---
 
+## [0.7.0-ms.2] — 2026-08-30
+
+### Added
+- **Multi-artifact projects**: a project can now provision more than one ODC
+  artifact — the web app plus one or more Agentic Apps (Agent Workbench agents).
+  New **Step 0 — Provisioning**: create every artifact empty, with final names
+  fixed up front, before any wave starts. Recorded in RUNBOOK.md as its own
+  section (never a wave — it produces nothing clickable, so it gets no wave
+  number and no row in the wave table).
+- **`Módulo alvo:` sections**: a single wave can now span more than one ODC
+  artifact (e.g. a screen that calls an agent) without breaking the
+  one-testable-outcome-per-wave rule. `prompts/wN.md` gets one fenced prompt
+  per artifact touched, each under its own `## Módulo alvo: <ArtifactName>`
+  heading, pasted into that artifact's own Mentor Studio session.
+- **Guardrail 11 (async agent calls)**: any communication with an Agent
+  Workbench agent MUST go through the ODC event mechanism (publish/subscribe)
+  — never a synchronous call blocking the UI on the agent's response.
+- **Guardrail 12 (module routing)**: paste each `Módulo alvo:` section into
+  that artifact's own session — never mix web-app and Agentic App content.
+- **W0 gets a real Mentor Studio prompt, not just AppGen**: alongside the base
+  theme/shell, W0 now always builds a permanent **"Tema & Identidade Visual"**
+  screen — color swatches labeled by token name, contrast pairs, a typography
+  specimen, the icon set, and every component state — so the theme wave has
+  something clickable to gate on instead of a human's word that "it looks
+  right." The living prototype gets the same screen, built first.
+- **File format for `prompts/wN.md`** (new Section 0 in
+  `references/mentor-studio-prompt.md`): every prompt to paste is a single
+  self-contained fenced code block — guardrails, context, objective, changes,
+  markup and expected result all inline, in the established anatomy order.
+  Everything else (rationale, dependency order, post-paste checks) is prose
+  *outside* the fence, always marked `> **Nota do operador (não copiar):**`.
+  This replaces the earlier pattern of a shared guardrails block the operator
+  had to mentally merge with a per-module block further down.
+
+### Changed
+- `SKILL.md`: "Choosing the channel per wave" table now includes provisioning
+  and Agentic App configuration as explicit channel rows.
+- `SKILL.md`: RUNBOOK's "Project facts" now documents the provisioned-artifacts
+  table instead of a plain "app name, module names" line.
+- Checklist before handing the plan over: two new items enforcing the fenced
+  self-contained prompt format and the Step-0-is-not-a-wave rule.
+
+### See also
+- [`DELTA.md`](DELTA.md) — detailed breakdown of the 0.7.0-ms.1 fork-point changes
+
+---
+
 ## [0.7.0-ms.1] — 2026-02-20
 
 ### Added
