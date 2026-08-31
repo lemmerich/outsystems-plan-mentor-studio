@@ -255,7 +255,11 @@ to; never skip a step silently.**
 2. Approve      — get the user's explicit sign-off on the prototype change
 3. Emit         — update the wave spec from the approved prototype, then
                   write prompts/wN.md and show it for the operator to paste
-                  into Mentor Studio; the operator publishes and reports back
+                  into Mentor Studio. If Mentor Studio replies with a written
+                  plan instead of executing immediately (it often does, and
+                  asks "proceed or discard"), the operator pastes that plan
+                  back before clicking proceed — see "Plan check" below.
+                  Once clear to proceed, the operator publishes and reports back
 4. Compare      — open the published screen and the approved prototype
                   side by side; list every visual/behavioral difference —
                   don't stop at the first one found
@@ -267,6 +271,66 @@ to; never skip a step silently.**
                   user whether to run them now (never auto-run — see the
                   RUNBOOK's per-wave procedure)
 ```
+
+**Plan check — free when Mentor Studio offers it, never required.** Some
+Mentor Studio builds return a written plan before touching the module and
+wait for "proceed" or "discard" rather than executing immediately. Treat
+that plan as a free preview: read it against the prompt's own CHANGES list,
+GUARDRAILS and DO NOT TOUCH before telling the operator to proceed. This
+catches the same class of misunderstanding Compare catches after publish —
+a CHANGES item silently reinterpreted, a guardrail about to be skipped, a
+plan step that reaches past DO NOT TOUCH — except here it costs nothing: no
+publish, no undo, no Compare round.
+
+What to check the returned plan against, in order:
+- Every CHANGES item has a matching plan step, and no extra one appeared —
+  scope creep reads more clearly in a plan than in a published screen.
+- Nothing in the plan names an artifact from DO NOT TOUCH.
+- No plan step already contradicts a numbered GUARDRAILS rule — a plan that
+  says "hex color #1E88E5" or describes one field per row has told you it
+  will fail guardrails 1 and 3 before it runs.
+- The plan's screen-building steps account for the LAYOUT FACTS (max-width,
+  stacking, `min-width: 0`) named in the prompt — a plan that is silent on
+  them is a plan that will build fill-parent containers.
+
+If the plan looks right, tell the operator to click proceed. If it doesn't,
+never discard and re-paste the whole prompt — that just repeats whatever
+produced the misreading. Instead give the operator one short correction to
+paste into the same session before it executes (a sentence or two naming
+the misunderstood point, not a new prompt). This is cheaper than a
+post-publish re-prompt precisely because nothing has been built yet.
+
+If the same misunderstanding shows up in a plan twice across a project, the
+cause is in the prompt's wording, not in Mentor: fix the phrasing pattern in
+`prompts/wN.md` for later waves, and if the shape looks likely to recur on
+other projects, add it to `references/mentor-studio-prompt.md` section 4.
+This is the same discipline as the re-prompt retrospective below — a
+misreading you don't write down as a prompt-wording problem is one you pay
+for again next wave.
+
+Log a plan check only when it changed something: `[Plan check: <one line —
+what was corrected before Mentor executed>]`, alongside re-prompts, in the
+Step 5 execution log.
+
+**Reconcile styling by replacement, not by patch.** The first reconcile round
+may be a short list of named fixes. From the second round on — and immediately,
+on any round where a previous round's correct result came back wrong — send the
+screen's **complete** stylesheet at its final values and say the listed rules
+replace what exists, rather than another list of deltas. Diffs against a
+stylesheet the other side is also rewriting are path-dependent: each one fixes
+its named item and disturbs a neighbour, which reads to the user as churn on
+work that was already approved. See `references/mentor-studio-prompt.md` §4.
+
+**Never trust "done" — read the published result back.** Mentor's recap of
+what it changed is a claim, not a fact; verify against the actual published
+CSS/DOM/screen the same way Compare verifies against the spec, especially
+before reporting a round finished. And once one isolated, single-property
+fix has failed twice through chat-mediated rounds — even after changing the
+mechanism, not just the wording — weigh handing it to the operator as a
+direct edit in ODC Studio over a third round-trip; some structural
+corrections are a few-second click and are not obviously more likely to land
+on attempt three. See `references/mentor-studio-prompt.md` §4 for the
+mechanics behind both of these.
 
 **Reconcile has a budget: two rounds per wave.** Upstream loops steps 4 to 5 to
 4 until nothing is left, which is right when reconciling costs one more MCP
@@ -404,10 +468,25 @@ This determines:
   "Choosing the channel per wave") or an existing app is extended
 - What the module tree already contains, since every context pack has to state it
 - Whether test user provisioning and a saved Playwright `storageState` are needed
+- **The access level every wave's context pack must restate.** Record the
+  answer once in RUNBOOK "Project facts," then carry it into every wave's
+  `CONTEXT` block verbatim (see `references/mentor-studio-prompt.md` §2) and
+  into guardrail 13 for any wave that creates a screen. A public-app project
+  whose prompts never say so gets a login-required screen every time — ODC's
+  default, not the operator's intent — see "The wave execution cycle" for how
+  a Plan check catches this before publish, and the RUNBOOK per-wave
+  procedure for fixing it after.
 
 **Also ask which channels are available:** AppGen in the ODC portal, Mentor
 Studio in the IDE, Mentor MCP. They are not interchangeable and every wave gets
 a `canal:`.
+
+**Also ask for the tenant's base URL** (e.g. `https://<tenant>.outsystems.app`)
+and record it once in RUNBOOK "Project facts." Every published screen's URL
+follows `<tenant-url>/<módulo>/<tela>`, so once this is on file the Compare
+step (see "The wave execution cycle") never has to ask the operator for a URL
+again — it's derived from the wave's own `Módulo alvo` and the screen name
+already in the spec.
 
 **Also ask whether the plan needs any AI agent (Agent Workbench).** If yes,
 each agent is a separate Agentic App artifact, provisioned manually before
@@ -541,6 +620,24 @@ From W1 on, design direction in a wave prompt names the native OutSystems UI
 block it maps to (`Card`, `Tabs`, `ListItem`, `Columns2`), never a generic
 description. A prompt that says "a card-like container" gets a `<div>`; one that
 says `Card` gets a `Card`.
+
+**"Apply the tokens to the shell" is too vague to act on — name the actual
+selectors and the actual numbers.** OutSystems UI's shell chrome (the sidebar,
+its nav items, the content area's width cap) is styled by the framework's own
+classes and its own CSS variables (`.app-menu-content`, `.app-menu-links a`,
+`--side-menu-size`, `.ThemeGrid_Container` with its own default `max-width`) —
+none of which resemble the project's theme variable names. A CHANGES item that
+says "apply the theme to the sidebar and content area" without naming which
+framework selector to override and what value to set gets read as "leave the
+framework defaults alone and only style what's explicitly named" — which is a
+reasonable, cautious reading (guardrail 10 says stop rather than improvise),
+and it means the shell stays completely unthemed while every custom class the
+prompt did name gets built correctly. Two box-model facts belong in every
+W0 prompt's `LAYOUT FACTS`, sourced from the spec's Screen layout section, not
+left implicit: the sidebar's fixed width in px, and the content area's
+max-width in px (state it as "override the framework's default container
+max-width, currently narrower than this" — otherwise the prompt reads as
+additive styling on top of a default that was never flagged as wrong).
 
 ### Data model rule
 
@@ -701,6 +798,7 @@ Then append one entry in this exact format — nothing more:
 ```markdown
 ## W<N> — <name>  |  <started> → <finished>
 - Prompt: prompts/w<N>.md (<N> lines), canal <x> — pasted once
+- [Plan check: <one line — what was corrected before Mentor executed>]
 - [Re-prompt <n>: <one line: what was missing or wrong in the prompt>]
 - [Deviation: <what Mentor did instead> → <how resolved>]
 - Compare: <N> differences — <N> reconciled, <N> accepted (fidelidade <x>)
@@ -715,6 +813,8 @@ happened. A clean wave is four lines. A messy wave names what was messy.
 **What belongs in the log:**
 - Every paste and every re-prompt, with a one-line reason for the re-prompt
   (this is the raw material for the retrospective that improves the prompts)
+- Every plan-check correction, with what was wrong in the plan before it ran —
+  the cheapest signal available that a prompt's wording, not Mentor, caused it
 - Differences Compare found, and which ones were accepted instead of fixed
 - Every deviation from the spec and its resolution (one line each)
 - Gate verdict and test result
@@ -815,12 +915,23 @@ GUARDRAILS (apply to every screen and action in this wave):
     section into that artifact's own Mentor Studio session — never paste a
     web-app section into an Agentic App's session or vice versa. Each
     section is otherwise self-contained and independently gated.
+
+13. Every screen this wave creates must state its access level explicitly —
+    `Everyone` (public, no login) or the specific role(s) required, per the
+    project's authentication model recorded in RUNBOOK "Project facts."
+    A screen never inherits the right access level by default: ODC creates
+    new screens as login-required unless told otherwise, so a public-app
+    project that never says so in the prompt gets an authenticated screen
+    every time.
 ```
 
 ---
 
 ## Checklist before handing the plan over
 
+- [ ] Every `PROTOTYPE MARKUP` block carries the CSS rule for every class and
+      shell-level selector it uses, not HTML alone — HTML without its CSS is
+      a guess wearing the right tag names (see `references/mentor-studio-prompt.md` §3)
 - [ ] Every UI wave has an approved prototype screen, and its spec's Screen
       layout section was derived from that approved screen, not written first
 - [ ] After publish, the live screen was compared against the prototype

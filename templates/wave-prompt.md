@@ -5,6 +5,7 @@
 CONTEXT
 Application: [app name]
 Modules: [names] — this wave changes [module] only
+Authentication: [public — Everyone, no login] | [requires login — roles: X, Y]
 Theme: [theme name]. All colors are theme variables: [--var-1], [--var-2], [--var-3]
 Entities that exist: [Entity (attr, attr)], [Entity (attr)]
 Screens that exist: [Screen — what it shows]
@@ -72,6 +73,11 @@ GUARDRAILS (apply to every screen and action in this wave)
     TOUCH, and do not build ahead into the next wave. If something here is
     impossible or contradicts what is already in the module, stop and say so
     instead of improvising — a human is reading your answer and can re-plan.
+
+11. Any screen this wave creates gets the access level from Authentication
+    above (`Everyone` or the stated role) explicitly — a new screen is
+    login-required by default, so a public-app project must say so every
+    time or the default silently wins.
 
 EXPECTED
 - [Observable outcome, phrased so it can be clicked and checked]

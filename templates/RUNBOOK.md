@@ -99,6 +99,9 @@ in ODC Studio and confirms:
 - [ ] Screen count matches — no placeholder screens for future waves
 - [ ] No role created that the spec did not authorize
 - [ ] No hex literal in any screen or block
+- [ ] Each new screen's access level matches the project's authentication
+      model — ODC creates screens login-required by default, so a public
+      app's screen needs `Everyone` set explicitly, not assumed
 
 This gate is softer than a programmatic one. It catches "created three screens
 instead of one"; it will not catch a subtly wrong attribute type. That is what
