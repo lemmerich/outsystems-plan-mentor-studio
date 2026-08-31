@@ -1,6 +1,6 @@
 ---
 name: outsystems-plan
-version: "0.7.0"
+version: "0.8.0"
 description: >
   Guides you from a blank folder to a complete OutSystems build plan through
   a short interactive interview. Reads your spec and reference screens, proposes
@@ -154,6 +154,15 @@ six-step loop, and it applies whether the wave is brand new or a fix on top
 of one already published. **Skip a step only when the user explicitly says
 to; never skip a step silently.**
 
+**Before starting the cycle for the next wave, re-check the plan itself**:
+re-read that wave's `spec-wN.md` in full (not from memory — see
+`prototype-to-widgets.md` #16) and check whether anything discovered while
+executing *previous* waves changes what this wave should do — a data-model
+exception granted mid-build, a renumbering, a scope item that moved, a bug
+fix that already covers part of this wave's stated scope. Update
+`RUNBOOK.md`/`spec-wN.md` first if something's stale, *then* start step 1.
+This is a standing check, every wave, not a one-time planning-phase step.
+
 ```
 1. Prototype    — build or evolve the screen(s) in the living prototype (HTML)
 2. Approve      — get the user's explicit sign-off on the prototype change
@@ -161,11 +170,51 @@ to; never skip a step silently.**
                   fire Mentor with box-model facts in the prompt; publish
 4. Compare      — open the published screen and the approved prototype
                   side by side; list every visual/behavioral difference —
-                  don't stop at the first one found
+                  don't stop at the first one found. When the wave
+                  introduces a new computed/derived field (a score, a
+                  status, a rollup), also check every OTHER already-built
+                  screen that lists or references the same entity — a wave
+                  spec is typically written against the one screen the
+                  feature "lives on," and an existing list/summary screen
+                  elsewhere showing a static "—" placeholder for that same
+                  data is easy to miss because it renders without error,
+                  just wrong data. Grep the entity's other consumers
+                  (`context_screens`/`context_actions` scoped to the app,
+                  or a search for the entity name across prior wave specs)
+                  before declaring the wave visually complete. **For any
+                  new form/card container, explicitly re-check the two
+                  box-model facts from Step 3 against the live screen —
+                  container width (does it stay capped, or did it stretch
+                  to fill-parent?) and inter-element spacing (button gaps,
+                  padding) — by measuring, not eyeballing.** A prompt that
+                  skipped stating those facts (the single most common
+                  authoring gap — see `prototype-to-widgets.md` #2) will
+                  produce a screen that "looks right" in a quick glance but
+                  is visibly wrong on width/spacing once actually compared;
+                  this is exactly the kind of gap a cursory compare misses
+                  and a real user catches immediately.
 5. Reconcile    — for each difference: fix the app (usually), or fix the
                   prototype/spec if the difference was the prototype's own
                   oversight (see the prototype-first principle) — then
-                  re-publish and go back to step 4 until there's nothing left
+                  re-publish and go back to step 4 until there's nothing left.
+                  **Before writing any CSS fix prompt targeting an element
+                  that a PRIOR wave already patched** (any overlay/modal/
+                  card named in an earlier `w*-fix.md` log or the Mentor
+                  Fidelity Report), first dump every stylesheet rule that
+                  currently matches that element (see `references/
+                  recipes.md` → "dump every matching rule FIRST") — a prior
+                  wave's leftover workaround (often `!important` on a broad
+                  `> *` selector) silently outranks a plain new rule
+                  regardless of specificity, and Mentor cannot see this
+                  itself since it never renders the page. If a fix's
+                  post-publish measurement comes back UNCHANGED, that is
+                  the signature of exactly this — don't write a stronger
+                  version of the same fix; run the rule dump instead. And
+                  when a turn replaces an old stopgap with the real fix,
+                  the SAME turn must explicitly remove the stopgap — see
+                  "retire the workaround when the real fix lands" in
+                  recipes.md — otherwise it lies dormant until some later,
+                  unrelated wave touches the same element and loses to it.
 6. Test         — update/add E2E test cases for what changed, then ask the
                   user whether to run them now (never auto-run — see the
                   RUNBOOK's per-wave procedure)
@@ -372,6 +421,18 @@ container and require `min-width: 0`. These three facts do not survive a
 principle" above and `references/prototype-to-widgets.md` for the recurring
 failure modes behind each of these three facts.
 
+**Before writing the Mentor prompt, check `references/recipes.md` for the
+UI pattern this wave is building.** Fourteen recurring patterns — a
+dropdown with an "all"/empty option, a modal containing a form, a sticky
+footer, per-row list controls, bulk-save actions, icon+label link
+wrapping, reserved theme class names, MasterDetail, appearance resets,
+external fonts, and more — have copy-paste prompt blocks there that
+already encode the fix for every mechanical gap hit building that pattern
+the first time. Use the recipe verbatim (adjusted for names) instead of
+re-describing the pattern from scratch — a natural-language description
+of the same pattern is exactly what produced the multi-turn fixes
+recipes.md now exists to prevent.
+
 ### Actions
 [For each action: name, inputs, outputs, exact error messages verbatim]
 
@@ -415,6 +476,10 @@ Key rules:
 - `TableRecords` `data-test` attributes land on `<td>` cells, not `<tr>` — locate rows via `page.locator('tr').filter({ hasText })`.
 - A data-driven dropdown defaults to its placeholder — always call `selectOption({ label })` before asserting the happy path.
 - Status badges bound to the wrong column show the English `Label` instead of the PT-BR `LabelPtBr` — assert the exact localized string.
+- `getByRole('radio'/'checkbox'/'button', { name })` matches by substring by default — two options where one's label is a prefix of another's (e.g. "Não" / "Não se aplica") resolve to 2 elements and throw a strict-mode violation. Pass `{ name, exact: true }` whenever any two option labels in the same group could overlap as substrings.
+- A helper function that clicks a button which triggers navigation must wait for that navigation to actually land (`page.waitForURL(...)` or wait for a locator unique to the destination screen) before returning — a caller that does `const url = page.url()` immediately after calling the helper can capture the pre-navigation URL if the helper returns before the redirect completes, then silently operate on the wrong screen for the rest of the test.
+- When manually verifying a reactive OutSystems screen's behavior via browser automation (not through Playwright's own `.click()`, which is a trusted event) — e.g. probing a bug hypothesis with `element.click()` or dispatching synthetic `input`/`change` events via `page.evaluate` — expect those synthetic events to update the DOM's local `checked`/`value` state but **not** reliably fire the framework's own reactive `OnChange` binding. A synthetic click can look like a repro failure (or success) that has nothing to do with the app: confirm any finding from synthetic interaction with a **real** click (via a genuine pointer-driven click tool, or Playwright's own `.click()`) before reporting it as a bug — this session got one false "still broken" reading this way, retracted only after the same interaction via a real click worked correctly.
+- When a wave's prototype introduces a new dynamic visual block (counters, computed labels, status pills) that a test will need to assert on, put explicit `data-test` attribute names for its pieces directly in the Mentor prompt. Without it, Mentor names elements after its own internal widget IDs (e.g. `#ClassificacaoPill`, `.audit-resumo-score-val`) that only surface after the fact via DOM inspection (`document.querySelectorAll`) — working, but an avoidable extra round-trip.
 
 **Tests are written into the spec but executed separately.** When a wave is
 implemented and published, ask:
@@ -511,7 +576,7 @@ updated as waves execute. It contains:
    diff against the prototype (not just the checklist) → publish → ask
    about tests
 6. **Mentor prompt guardrails** — prepended to every Mentor prompt, every wave
-7. **Static gate checklist** — entity count, action count, screen count, zero hex literals, no unauthorized roles, **screen matches the approved prototype screenshot** (layout, grouping, negrito/weight, dynamic vs static text — verify by opening the published screen and comparing, not by re-reading the spec)
+7. **Static gate checklist** — entity count, action count, screen count, zero hex literals, no unauthorized roles, **screen matches the approved prototype screenshot** (layout, grouping, negrito/weight, dynamic vs static text — verify by opening the published screen and comparing, not by re-reading the spec). **For any screen rendering a repeated list of rows with a selectable control per row** (radio group, dropdown, checkbox — an audit checklist, a survey, a set of per-item toggles): interact with the control in **two different rows**, not just one, and confirm the first row's selection survived the second row's click. A single-row test cannot catch a control accidentally bound to one shared screen variable instead of a per-row list attribute — that bug makes every row mirror whichever row was clicked last, and looks completely correct if only one row is ever touched during verification (see `prototype-to-widgets.md` #15).
 8. **Failure playbook** — what to do when things go wrong
 9. **Timing log** — one row per milestone, cumulative across waves
 10. **Never list** — absolute prohibitions

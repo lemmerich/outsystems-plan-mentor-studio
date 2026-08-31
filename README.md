@@ -139,6 +139,24 @@ into the prompt — that's the whole workflow.
 
 ---
 
+## The recipes reference
+
+`skill/references/recipes.md` is the companion to the lessons file above:
+where `prototype-to-widgets.md` explains *why* a mechanical gap happens,
+`recipes.md` gives the copy-paste prompt block that already encodes the
+fix — for recurring UI patterns like a dropdown with an "all"/empty
+option, a modal containing a form, a sticky footer, per-row list
+controls, bulk-save actions, icon+label link wrapping, reserved theme
+class names, `MasterDetail`, appearance resets, external fonts, dumping
+every CSS rule that currently matches an element before writing a fix
+prompt for it, and retiring an old stopgap in the same turn a real fix
+replaces it. Check it before writing a Mentor prompt for any UI pattern
+the wave is building — a recipe used verbatim (names adjusted) skips the
+multi-turn trial-and-error a natural-language description of the same
+pattern tends to produce.
+
+---
+
 ## Updating the skill
 
 When you improve the skill (fix a bug, add a lesson learned, refine the interview):
@@ -182,6 +200,10 @@ skill/
                               (box model, class-name mismatches, platform
                               defaults) — read before writing a wave's
                               Screen layout section or a Mentor prompt
+    recipes.md                copy-paste Mentor prompt blocks for
+                              recurring UI patterns, each one already
+                              encoding the fix for a gap documented in
+                              prototype-to-widgets.md
 templates/
   RUNBOOK.md            base for every project's execution guide
   spec-wave.md          template for each wave spec
@@ -203,6 +225,7 @@ README.md               this file
 
 | Version | What changed |
 |---|---|
+| 0.8.0 | Added `references/recipes.md` — copy-paste Mentor prompt blocks for recurring UI patterns (dropdown all/empty option, modal-with-form, sticky footer, per-row list controls, bulk-save, icon+label link wrapping, reserved theme class names, `MasterDetail`, appearance resets, external fonts, dumping matching CSS rules before a fix, retiring an old stopgap in the same turn a real fix lands). Twenty new `prototype-to-widgets.md` entries (#11–#30) from real waves, covering: OutSystems platform-generated widget ids that aren't stable across publishes; `List mapTo { }` with no explicit mappings zeroing every field, not just the omitted ones; two `AtStart` aggregates losing their implicit execution order when either's OML node is recreated; `RadioButtonGroup`'s `OnChange` not reliably reading the just-clicked value for any row but the first in a list, with the accessibility trade-offs of each fix direction; a dynamically-computed CSS width/height that never renders because the element's `display` computed to `inline`; a filter dropdown sourced from a growing historical table needing an explicit "actually referenced" scope, and the join-vs-semi-join distinction that comes with it; Mentor silently reverting an unrelated, already-verified prior fix while applying an unrelated one — re-verify every prior fix after every subsequent turn, not just once; a screen aggregate's `Distinct` property and the `Exists` function both being unavailable through Mentor's Model API (`GroupBy` and a server-action detour are the two paths that work); ad-hoc debug buttons for a recurring maintenance action (reseed, cleanup) becoming a permanent "Dev tools" area instead of an add-then-remove cycle. `SKILL.md` updated: re-check the plan itself (stale `RUNBOOK.md`/`spec-wN.md`) at the start of every wave, not just once; check every other screen that already lists/references an entity a wave adds a new field to, not just the screen the feature "lives on"; measure box-model facts (container width, spacing) on the live screen, not by eyeballing; dump every matching CSS rule before writing a fix prompt for an element a prior wave already patched, and retire the old stopgap in the same turn; check `recipes.md` before writing a Mentor prompt for a recognized UI pattern; interact with a per-row list control in two different rows before declaring it verified, not just one. |
 | 0.7.0 | Two new `prototype-to-widgets.md` entries from a real wave: (1) a link can be empty — content placed *beside* the anchor instead of *inside* it looks fixed but is unclickable; (2) re-parenting elements (e.g. moving them inside a new link to fix #1) drops them out of the old parent's flex context, since `display: flex` only arranges direct children — the new wrapper needs its own flex rule restated. |
 | 0.6.0 | Hard cap: never more than one screen per wave, no exceptions — a list+detail pair discovered together in the prototype is still two waves. Data seeds don't count against the cap but should be weighed for real size. |
 | 0.5.0 | Test evidence is now required, not just a tally: `playwright.config.ts` ships with an HTML reporter by default, and the wave log must record its path (overwritten each run — that's expected, not a gap). |
