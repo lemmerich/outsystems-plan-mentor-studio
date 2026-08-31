@@ -728,7 +728,7 @@ One `tests/wN.spec.ts` per wave, with test IDs matching the spec (`W2-01`, `W2-0
 
 Key rules:
 
-- `playwright.config.ts` must set `testIdAttribute: 'data-test'` — Playwright's default is `data-testid` which OutSystems never sets.
+- `playwright.config.ts` must set `testIdAttribute: 'data-test'` — Playwright's default is `data-testid` which OutSystems never sets. This must live **inside `use: {}`**, not at the config's top level — a top-level `testIdAttribute` is silently ignored by current Playwright (no error, no warning), and every `getByTestId(...)` in every spec then matches zero elements. This is easy to reintroduce by hand-writing a config instead of copying `templates/playwright.config.ts`, which already has it in the right place — when in doubt, run one spec that calls `getByTestId` and confirm it actually finds the element before writing the rest of the suite.
 - `fullyParallel: false`, `workers: 1` — waves share one environment.
 - `reporter` must include `['html', { open: 'never', outputFolder: 'playwright-report' }]` alongside `['list']` — `list` alone only prints to the terminal, and terminal output is not evidence once the turn scrolls away. The HTML report (with screenshots and traces on failure) is what makes "5 passed" a checkable claim instead of a summary someone has to trust. It's overwritten by the next run of the same project — if the user wants a specific run preserved across future runs, that's a separate ask (copy the folder, or init git and commit it), not something to assume.
 - All locators and all verbatim messages live in `support/selectors.ts`. A UI rename is one edit.
