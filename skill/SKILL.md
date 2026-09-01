@@ -1,6 +1,6 @@
 ---
 name: outsystems-plan-mentor-studio
-version: "0.8.0-ms.3"
+version: "0.8.0-ms.4"
 date: "2026-08-30"
 upstream: "0.7.0"
 description: >
@@ -962,7 +962,7 @@ updated as waves execute. It contains:
    → manual static gate (module-tree read-back) → compare against the
    prototype → reconcile within budget → ask about tests
 6. **Mentor prompt guardrails** — prepended to every Mentor prompt, every wave
-7. **Static gate checklist** — entity, action and screen counts read back from the ODC Studio module tree by the operator, zero hex literals, no unauthorized roles, **screen matches the approved prototype** (layout, grouping, negrito/weight, dynamic vs static text — verify by opening the published screen and comparing, not by re-reading the spec). **For any screen rendering a repeated list of rows with a selectable control per row** (radio group, dropdown, checkbox — an audit checklist, a survey, a set of per-item toggles): interact with the control in **two different rows**, not just one, and confirm the first row's selection survived the second row's click. A single-row test cannot catch a control accidentally bound to one shared screen variable instead of a per-row list attribute — that bug makes every row mirror whichever row was clicked last, and looks completely correct if only one row is ever touched during verification (see `references/prototype-to-widgets.md` #15).
+7. **Static gate checklist** — entity, action and screen counts read back from the ODC Studio module tree by the operator, zero hex literals, no unauthorized roles, **screen matches the approved prototype** (layout, grouping, negrito/weight, dynamic vs static text — verify by opening the published screen and comparing, not by re-reading the spec). **For any screen rendering a repeated list of rows with a selectable control per row** (radio group, dropdown, checkbox — an audit checklist, a survey, a set of per-item toggles): interact with the control in **two different rows**, not just one, and confirm the first row's selection survived the second row's click. A single-row test cannot catch a control accidentally bound to one shared screen variable instead of a per-row list attribute — that bug makes every row mirror whichever row was clicked last, and looks completely correct if only one row is ever touched during verification (see `references/prototype-to-widgets.md` #15). **If this wave created a new screen, check that the sidebar/menu item meant to reach it actually points there** — a nav shell built early (before every screen it links to exists yet) commonly ships every link pointing at whatever placeholder screen existed at the time, and nothing re-flags the stale link once the real screen is finally built. This is not a one-time fix, it's a standing check on every wave that adds a screen — checking once and assuming later waves won't repeat it misses the same class of bug recurring on a different menu item.
 8. **Failure playbook** — what to do when things go wrong
 9. **Timing log** — one row per milestone, cumulative across waves
 10. **Never list** — absolute prohibitions

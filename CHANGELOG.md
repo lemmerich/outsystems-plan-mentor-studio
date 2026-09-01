@@ -8,6 +8,20 @@ and this project uses semantic versioning with a fork suffix:
 
 ---
 
+## [0.8.0-ms.4] — 2026-09-01
+
+### Fixed
+- `SKILL.md` static gate checklist: added a standing check for whether a
+  wave's new screen actually has a working nav link pointing to it — a
+  nav shell built early (before the screens it links to exist) ships
+  every link pointing at whatever placeholder screen existed at build
+  time, and nothing re-flags a stale link once the real screen is
+  finally built. Hit twice in the same project on two different menu
+  items (3 links in one wave, one more in the next) before being made a
+  standing per-wave check instead of a one-off fix.
+
+---
+
 ## [0.8.0-ms.3] — 2026-09-01
 
 ### Fixed
