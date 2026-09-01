@@ -1,6 +1,6 @@
 ---
 name: outsystems-plan-mentor-studio
-version: "0.8.0-ms.4"
+version: "0.8.0-ms.5"
 date: "2026-08-30"
 upstream: "0.7.0"
 description: >
@@ -264,11 +264,25 @@ This is a standing check, every wave, not a one-time planning-phase step.
 2. Approve      — get the user's explicit sign-off on the prototype change
 3. Emit         — update the wave spec from the approved prototype, then
                   write prompts/wN.md and show it for the operator to paste
-                  into Mentor Studio. If Mentor Studio replies with a written
-                  plan instead of executing immediately (it often does, and
-                  asks "proceed or discard"), the operator pastes that plan
-                  back before clicking proceed — see "Plan check" below.
-                  Once clear to proceed, the operator publishes and reports back
+                  into Mentor Studio. **Before finalizing the prompt, walk
+                  the CHANGES list against `SKILL.md`'s "Known OutSystems
+                  selector pitfalls" and `references/mentor-studio-prompt.md`
+                  §4b's gotcha table, one gotcha at a time, and name in the
+                  prompt exactly which ones apply to this wave's screens —
+                  a generic nearby-sounding instruction is not the same
+                  fix.** Two gotchas in that list can look interchangeable
+                  (a `data-test` landing on a list's wrapping container vs.
+                  landing on a `TableRecords` row's `<td>` instead of its
+                  `<tr>`) but need different exact wording — this exact
+                  mix-up shipped the same bug on two different waves of one
+                  project because the second wave's prompt reused the first
+                  gotcha's generic phrasing instead of checking whether the
+                  more specific table-row gotcha applied. If Mentor Studio
+                  replies with a written plan instead of executing
+                  immediately (it often does, and asks "proceed or
+                  discard"), the operator pastes that plan back before
+                  clicking proceed — see "Plan check" below. Once clear to
+                  proceed, the operator publishes and reports back
 4. Compare      — open the published screen and the approved prototype
                   side by side; list every visual/behavioral difference —
                   don't stop at the first one found. When the wave
@@ -857,7 +871,7 @@ Key rules:
 - `LayoutSideMenu` sidebar entries have ARIA role `menuitem` inside `menubar`, not `link`.
 - The platform `Upload` widget's label is not wired to its `<input>` — use `input[type="file"]` by position, not `getByLabel`.
 - `Title` widget renders a `<span>`, not a heading — `getByRole('heading')` never matches it.
-- `TableRecords` `data-test` attributes land on `<td>` cells, not `<tr>` — locate rows via `page.locator('tr').filter({ hasText })`.
+- `TableRecords` `data-test` attributes land on `<td>` cells, not `<tr>`, by default — locate rows via `page.locator('tr').filter({ hasText })` as a test-side fallback, but **this is not just a test-writing pitfall — say it explicitly in the Mentor prompt too**, every time a wave's CHANGES lists a `data-test` for a table row: "place `data-test` on the `<tr>` element itself, not on any `<td>` cell inside it." A generic instruction to put a list-item `data-test` "on each item, not the wrapping container" (the fix for a *different* bug — see the next bullet) does not cover this one: for a `TableRecords` row, a cell technically *is* "an individual item" from Mentor's side, so the generic phrasing gets satisfied by landing on a `<td>` again. Confirmed recurring: this exact bug shipped twice on two different waves of the same project — once on a plain repeated `<div>` list where the generic instruction was enough, once on a `TableRecords` row where it silently wasn't, because the two `data-test` bugs share a category but not a mechanism and only one prompt used the table-specific wording.
 - A data-driven dropdown defaults to its placeholder — always call `selectOption({ label })` before asserting the happy path.
 - Status badges bound to the wrong column show the English `Label` instead of the PT-BR `LabelPtBr` — assert the exact localized string.
 - `getByRole('radio'/'checkbox'/'button', { name })` matches by substring by default — two options where one's label is a prefix of another's (e.g. "Não" / "Não se aplica") resolve to 2 elements and throw a strict-mode violation. Pass `{ name, exact: true }` whenever any two option labels in the same group could overlap as substrings. The same trap applies to `.filter({ hasText: 'X' })` on any locator — a status/label pair like "Ativa"/"Inativa" collides the same way (`hasText: 'Ativa'` also matches "Inativa"); use a regex with a negative lookbehind (`/(?<!In)Ativa/`) or `hasText: exactString` semantics instead of a bare substring whenever one label could be contained inside another.

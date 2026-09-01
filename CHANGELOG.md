@@ -8,6 +8,29 @@ and this project uses semantic versioning with a fork suffix:
 
 ---
 
+## [0.8.0-ms.5] — 2026-09-01
+
+### Fixed
+- `SKILL.md`: a `data-test`-on-wrong-element bug shipped twice on two
+  different waves of the same project despite being documented — the
+  wrong lesson got applied. Two gotchas share a category ("data-test in
+  the wrong place on a repeated list") but not a mechanism: one is about
+  a plain `<div>` list where the attribute lands on the wrapping
+  container, the other is `TableRecords` always distributing custom
+  attributes onto each `<td>` cell rather than the `<tr>`. The
+  `TableRecords` gotcha was documented only as a test-writing workaround
+  (`page.locator('tr').filter(...)`), never as an instruction the Mentor
+  prompt itself needed to state — so a wave's prompt reused the generic
+  "each item, not the container" phrasing from the other gotcha, which
+  a `TableRecords` cell technically satisfies. Fixed the lesson's wording
+  to require table-specific phrasing in the prompt, and added a standing
+  Emit-step requirement: walk the CHANGES list against the known-gotchas
+  tables one gotcha at a time and name which ones apply, rather than
+  trusting a nearby-sounding generic instruction to cover a more specific
+  case.
+
+---
+
 ## [0.8.0-ms.4] — 2026-09-01
 
 ### Fixed
