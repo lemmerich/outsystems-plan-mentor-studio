@@ -8,6 +8,38 @@ and this project uses semantic versioning with a fork suffix:
 
 ---
 
+## [0.8.0-ms.2] — 2026-08-31
+
+### Added
+- Six more `prototype-to-widgets.md` entries (#35–#40) from the rest of
+  the W1 wave, all generalized beyond this project: an edit-toggle
+  appending the form instead of replacing the view (duplicating every
+  shared field); hiding a wrapping container with `display: none` can
+  silently disable a `position: fixed` component nested inside it (an
+  off-canvas drawer inside the sidebar wrapper) even though the app's
+  own state still thinks it's open; two independently-correct responsive
+  breakpoint rules can leave an exact-pixel dead zone where neither
+  applies, diagnosed fastest by bisection rather than round-number
+  guesses; a fix prompt aimed at a placeholder string's wording can get
+  "fixed" by rewording the placeholder instead of implementing the real
+  dynamic rendering behind it — break the loop by specifying the required
+  DOM shape (child element count) instead of describing the text as
+  wrong; Editar/Salvar/Cancelar buttons rendering on a row proves nothing
+  about whether an edit-mode template was ever built for it — verify by
+  counting actual form-control elements, not by trusting button presence;
+  a `data-test` meant for each item of a repeated list can land on the
+  list's own wrapping container instead, resolving to 1 match instead of
+  N with every item's text concatenated together.
+- Two new `recipes.md` entries matching #35 and #40 above, each with a
+  prompt block and a post-publish DOM-count verification snippet.
+- `SKILL.md`: extended the substring-matching E2E pitfall to cover
+  `.filter({ hasText })` collisions (not just `getByRole`'s `name`) —
+  "Ativa" matching inside "Inativa" is the same trap as the existing
+  radio-label example; added a bullet on verifying a list `data-test`
+  resolves to N items, not 1.
+
+---
+
 ## [0.8.0-ms.1] — 2026-08-31
 
 ### Added

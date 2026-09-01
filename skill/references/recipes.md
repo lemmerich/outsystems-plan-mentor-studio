@@ -1039,6 +1039,77 @@ shell's other half — not evidence the original fix needs to be stronger.
 
 ---
 
+## Recipe: an edit-toggle (Editar/Salvar/Cancelar) that must REPLACE the view, not append the form beside it
+
+**When to use:** any time a card/row has both a read-only view and an edit
+form triggered by the same "Editar" action.
+
+**The trap this avoids:** the edit action inserts the form as additional
+content instead of swapping it in — every field shown in both states
+(a header value, a badge) renders twice/three-times at once, and the
+underlying view stays fully visible and interactive while the form is
+open. See `prototype-to-widgets.md` #35.
+
+**Prompt block:**
+
+```
+Ao clicar em "Editar" neste card/linha, o conteúdo de visualização
+(cabeçalho, badges, textos estáticos) deve ser INTEIRAMENTE SUBSTITUÍDO
+pelo formulário de edição — não deve haver nenhum elemento de
+visualização ainda visível ao mesmo tempo que o formulário. Ao Salvar
+ou Cancelar, o formulário é substituído de volta pela visualização
+atualizada (ou original, no caso de Cancelar).
+```
+
+**Post-publish verification (browser console, right after clicking "Editar"):**
+
+```js
+const card = document.querySelector('[data-test="..."]'); // the card/row
+JSON.stringify({
+  formFieldCount: card.querySelectorAll('input, select, textarea').length,
+  hasLeftoverViewText: !!card.querySelector('.item-code, .badge, .pill') // adjust selectors to the view-mode classes
+});
+```
+If `hasLeftoverViewText` is true while form fields are also present, the
+handler is appending, not replacing.
+
+---
+
+## Recipe: verifying a `data-test` on a repeated list actually landed on each item, not the wrapping list
+
+**When to use:** any time a `data-test` is added to identify individual
+items in a rendered list/table (rows, cards, tiles) — always, not just
+when something seems wrong.
+
+**The trap this avoids:** the attribute ends up on the list's own
+container element instead of each repeated item inside it. A query for
+it still finds "an element" (so a shallow check passes), but resolves to
+exactly 1 match regardless of how many items are rendered, with every
+item's text concatenated together — which can itself accidentally
+satisfy a loose text filter and hide the bug further. See
+`prototype-to-widgets.md` #40.
+
+**Prompt block:**
+
+```
+O atributo data-test="<nome>" deve estar em CADA item individual da
+lista/tabela (um por linha/card), não no container que os envolve.
+Depois de aplicar, confirme que o número de elementos com esse
+data-test é igual ao número de itens renderizados, não 1.
+```
+
+**Post-publish verification (browser console):**
+
+```js
+const items = document.querySelectorAll('[data-test="<nome>"]');
+JSON.stringify({ count: items.length, firstItemText: items[0] && items[0].textContent });
+```
+`count` should equal the expected number of rows/cards. If it's 1 and
+`firstItemText` looks like every item's text run together, the
+attribute is one DOM level too high.
+
+---
+
 ## When this file isn't enough
 
 These are the two patterns this project actually hit more than once.
