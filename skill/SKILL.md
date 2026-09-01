@@ -1,6 +1,6 @@
 ---
 name: outsystems-plan-mentor-studio
-version: "0.8.0-ms.5"
+version: "0.8.0-ms.6"
 date: "2026-08-30"
 upstream: "0.7.0"
 description: >
@@ -272,12 +272,17 @@ This is a standing check, every wave, not a one-time planning-phase step.
                   a generic nearby-sounding instruction is not the same
                   fix.** Two gotchas in that list can look interchangeable
                   (a `data-test` landing on a list's wrapping container vs.
-                  landing on a `TableRecords` row's `<td>` instead of its
-                  `<tr>`) but need different exact wording — this exact
-                  mix-up shipped the same bug on two different waves of one
-                  project because the second wave's prompt reused the first
-                  gotcha's generic phrasing instead of checking whether the
-                  more specific table-row gotcha applied. If Mentor Studio
+                  a `TableRecords` row's `data-test` always landing on its
+                  `<td>` cells) but only one is a prompt-wording fix — the
+                  other is a real platform limitation (ODC Studio has no
+                  `data-test` slot on a `TableRecords` row itself) that no
+                  prompt wording resolves, confirmed by asking Mentor
+                  directly after two failed attempts. Know which kind of
+                  gotcha applies before writing the fix: for the ones that
+                  are genuine platform limits, write the test around the
+                  limitation from the start (e.g. `.closest('tr')`) instead
+                  of spending a fix-prompt round asking for something Studio
+                  doesn't expose. If Mentor Studio
                   replies with a written plan instead of executing
                   immediately (it often does, and asks "proceed or
                   discard"), the operator pastes that plan back before
@@ -871,7 +876,7 @@ Key rules:
 - `LayoutSideMenu` sidebar entries have ARIA role `menuitem` inside `menubar`, not `link`.
 - The platform `Upload` widget's label is not wired to its `<input>` — use `input[type="file"]` by position, not `getByLabel`.
 - `Title` widget renders a `<span>`, not a heading — `getByRole('heading')` never matches it.
-- `TableRecords` `data-test` attributes land on `<td>` cells, not `<tr>`, by default — locate rows via `page.locator('tr').filter({ hasText })` as a test-side fallback, but **this is not just a test-writing pitfall — say it explicitly in the Mentor prompt too**, every time a wave's CHANGES lists a `data-test` for a table row: "place `data-test` on the `<tr>` element itself, not on any `<td>` cell inside it." A generic instruction to put a list-item `data-test` "on each item, not the wrapping container" (the fix for a *different* bug — see the next bullet) does not cover this one: for a `TableRecords` row, a cell technically *is* "an individual item" from Mentor's side, so the generic phrasing gets satisfied by landing on a `<td>` again. Confirmed recurring: this exact bug shipped twice on two different waves of the same project — once on a plain repeated `<div>` list where the generic instruction was enough, once on a `TableRecords` row where it silently wasn't, because the two `data-test` bugs share a category but not a mechanism and only one prompt used the table-specific wording.
+- `TableRecords` `data-test` attributes land on `<td>` cells, not `<tr>` — and this is a **real platform limitation, not a prompt-wording gap**: ODC Studio does not expose a `data-test`/Extended Properties slot on the row (`<tr>`) a `TableRecords` widget generates, only on individual cells/columns. Confirmed by asking Mentor directly after a fix prompt explicitly requesting the `<tr>` placement failed twice — Mentor's own answer named the two real options: (a) keep `data-test` on a cell and have tests reach the row via `.closest('tr')`/`page.locator('tr').filter({ hasText })`, or (b) replace `TableRecords` with a `List` block (renders `<div>` rows, which do accept `data-test` directly) — a much larger change (different HTML, different styling, rebuilding the row layout) that is disproportionate just to fix a selector. **Default to (a) — accept the cell placement and write the test around it — unless the wave has an independent reason to prefer a `List` block already.** Don't spend a fix-prompt round asking Mentor to move it to the `<tr>`; the answer is already known. This corrects an earlier version of this lesson that assumed the `<tr>` placement was achievable with better prompt wording — it wasn't; the wording was never the problem.
 - A data-driven dropdown defaults to its placeholder — always call `selectOption({ label })` before asserting the happy path.
 - Status badges bound to the wrong column show the English `Label` instead of the PT-BR `LabelPtBr` — assert the exact localized string.
 - `getByRole('radio'/'checkbox'/'button', { name })` matches by substring by default — two options where one's label is a prefix of another's (e.g. "Não" / "Não se aplica") resolve to 2 elements and throw a strict-mode violation. Pass `{ name, exact: true }` whenever any two option labels in the same group could overlap as substrings. The same trap applies to `.filter({ hasText: 'X' })` on any locator — a status/label pair like "Ativa"/"Inativa" collides the same way (`hasText: 'Ativa'` also matches "Inativa"); use a regex with a negative lookbehind (`/(?<!In)Ativa/`) or `hasText: exactString` semantics instead of a bare substring whenever one label could be contained inside another.

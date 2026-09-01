@@ -8,6 +8,26 @@ and this project uses semantic versioning with a fork suffix:
 
 ---
 
+## [0.8.0-ms.6] — 2026-09-01
+
+### Fixed
+- Correction to the previous release's own lesson: `TableRecords`
+  `data-test` landing on `<td>` cells instead of `<tr>` is a **real ODC
+  Studio limitation**, not a prompt-wording gap — Studio has no
+  `data-test`/Extended Properties slot on the row itself, only on
+  individual cells. The prior entry assumed better prompt wording would
+  fix it; asking Mentor directly after two failed fix attempts confirmed
+  it can't, and named the two real options (keep it on a cell and reach
+  the row via `.closest('tr')` in tests, or replace `TableRecords` with a
+  `List` block — a disproportionate change just to fix a selector).
+  Reworded the lesson and the Emit-step gotcha-check to distinguish
+  platform limitations (write the test around them from the start) from
+  genuine prompt-wording gaps (fixable by being more specific) — walking
+  the gotcha list is still correct, but conflating the two kinds wastes a
+  fix-prompt round asking for something that was never achievable.
+
+---
+
 ## [0.8.0-ms.5] — 2026-09-01
 
 ### Fixed
