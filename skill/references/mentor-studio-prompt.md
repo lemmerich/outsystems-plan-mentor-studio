@@ -123,6 +123,31 @@ descriptions.
 `DO NOT TOUCH` is a flat list of names. Do not explain them. A named artifact
 with a description attached invites Mentor to "improve" it.
 
+**Never write a wave number as a stand-in for a fact, inside the fence.**
+"already published in W1" or "same pattern as W0" means nothing to Mentor —
+it has no memory of W0 or W1, no wave table, no concept of a wave at all. It
+only knows what's actually in the app right now and what this prompt tells
+it. Every fact a later wave depends on must be restated as a fact about the
+*current state of the app*, not as a pointer to an earlier session:
+
+- Wrong: "ExtrairTextoDocumento already exists (created in W1) — reuse it."
+- Right: "An action ExtrairTextoDocumento(Arquivo Binary) → Texto already
+  exists in this app — synchronous PDF text extraction using the OmniDoc2MD
+  Forge component. Reuse it, do not recreate it."
+- Wrong: "Same upload pattern as W1's ficha screen."
+- Right: state the pattern itself, in full, as if Mentor has never seen it:
+  attach only selects a file (chip + "Trocar arquivo", no server call), a
+  separate "Carregar documento" button fires the actual call, loading
+  feedback lives on that button (spinner + disabled), never on the widget.
+
+This costs a few more lines per prompt than a wave-number shorthand would,
+and is worth it every time — the shorthand doesn't compress anything from
+Mentor's side, it just produces a prompt that reads correctly to the human
+operator while silently telling Mentor nothing. Wave numbers belong only in
+the operator's own note above/below the fence (`> **Nota do operador (não
+copiar):**`), never inside it — that note is for a human with project
+memory, the fence is not.
+
 ## 3. Pruning the prototype markup
 
 **HTML without its CSS is not the layout contract — it's a guess wearing the

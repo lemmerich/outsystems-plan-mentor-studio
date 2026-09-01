@@ -1,6 +1,6 @@
 ---
 name: outsystems-plan-mentor-studio
-version: "0.8.0-ms.2"
+version: "0.8.0-ms.3"
 date: "2026-08-30"
 upstream: "0.7.0"
 description: >

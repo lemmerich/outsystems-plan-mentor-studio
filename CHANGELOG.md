@@ -8,6 +8,23 @@ and this project uses semantic versioning with a fork suffix:
 
 ---
 
+## [0.8.0-ms.3] — 2026-09-01
+
+### Fixed
+- `references/mentor-studio-prompt.md` §2 (The context pack): added an
+  explicit rule against writing a wave number as a stand-in for a fact
+  inside the copy-paste fence — "already published in W1" or "same
+  pattern as W0" means nothing to Mentor, which has no memory of past
+  waves, no wave table, no concept of a wave at all. Caught live: a W2
+  prompt referenced "W0"/"W1" throughout instead of restating the actual
+  facts (an action already exists, uses a specific Forge component; an
+  upload pattern already exists, described in full) as facts about the
+  current app state. The section 3 "prompt must be self-contained AND
+  small" principle already existed but had no concrete before/after
+  example calling out this exact anti-pattern — added one.
+
+---
+
 ## [0.8.0-ms.2] — 2026-08-31
 
 ### Added
