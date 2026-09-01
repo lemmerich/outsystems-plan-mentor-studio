@@ -8,6 +8,66 @@ and this project uses semantic versioning with a fork suffix:
 
 ---
 
+## [0.8.0-ms.1] — 2026-08-31
+
+### Added
+- Rebased skill reference content onto upstream `rodginez/outsystems-plan`
+  v0.8.0 (commit `a1ef0f4`): pulled forward `skill/references/recipes.md`
+  (new file, 14 copy-paste Mentor prompt blocks for recurring UI patterns —
+  dropdown all/empty option, modal-with-form, sticky footer, per-row list
+  controls, bulk-save, icon+label link wrapping, reserved theme class
+  names, `MasterDetail`, appearance resets, external fonts, dumping
+  matching CSS rules before a fix, retiring an old stopgap in the same
+  turn a real fix lands) and twenty new `prototype-to-widgets.md` entries
+  (#11–#30) from real upstream waves.
+- `SKILL.md`: re-check the plan itself (stale `RUNBOOK.md`/`spec-wN.md`)
+  at the start of every wave, not just once; Compare step now also checks
+  every other screen that already lists/references an entity a wave adds
+  a new field to, and re-measures box-model facts on the live screen
+  rather than eyeballing; Reconcile step now dumps every matching CSS rule
+  before writing a fix prompt for an element a prior wave already
+  patched, and retires the old stopgap in the same turn; points to
+  `recipes.md` before writing a Mentor prompt for a recognized UI
+  pattern; static gate now requires interacting with a per-row list
+  control in two different rows before declaring it verified. Three new
+  E2E lessons: `getByRole` substring-matching collisions need
+  `exact: true`; a navigation-triggering helper must wait for the
+  navigation to land before returning; synthetic DOM events from browser
+  automation can update local state without firing the app's own
+  `OnChange` binding — confirm any such finding with a real click before
+  reporting it as a bug.
+
+- Four new `prototype-to-widgets.md` entries (#31–#34) from this fork's
+  own W1 wave (Onni AI PoC): a "duplicate this record" action (Versionar)
+  can echo copied fields in the client without ever persisting them
+  server-side — verify by navigating away and back, not by reading
+  `.value` right after the action fires; a form field can look blank
+  because its text color nearly matches its own background, not because
+  the value failed to save — compare computed `color` against computed
+  `background-color` before chasing a data bug; a CSS fix scoped to one
+  piece of the platform shell's responsive sidebar/header system can
+  silently break the *other* piece (the off-canvas drawer stuck full-
+  viewport at desktop, or the hamburger toggle's header staying `display:
+  none` at every width) — always re-verify at both a desktop and a
+  tablet/mobile width; switching between sibling records in a
+  client-rendered detail panel can leave one specific UI block (often a
+  header form) stuck showing the previously-selected sibling's state even
+  after other blocks on the same screen update correctly.
+- New `recipes.md` entry: "any CSS fix touching the platform shell's
+  sidebar/header/nav containers" — a prompt block requiring two-viewport
+  verification plus a console snippet that catches the drawer/header
+  regression directly, paired with the new `SKILL.md` Reconcile-step
+  requirement to run it for any fix touching those containers.
+
+### Notes
+- Adaptations specific to this fork (Mentor Studio manual-paste workflow,
+  `Módulo alvo:` multi-artifact sections, the async-agent-call guardrail,
+  Portuguese wave-log conventions) are unchanged by this sync — only
+  upstream's general OutSystems/Mentor lessons were pulled forward, and
+  only where they didn't conflict with this fork's own adaptations.
+
+---
+
 ## [0.7.0-ms.2] — 2026-08-30
 
 ### Added

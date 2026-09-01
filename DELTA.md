@@ -1,6 +1,6 @@
 # DELTA — What changed from upstream
 
-Fork of `rodginez/outsystems-plan` v0.7.0 (commit `aae2e14`).
+Fork of `rodginez/outsystems-plan`, rebased on v0.8.0 (commit `a1ef0f4`) as of 2026-08-31.
 
 Upstream drives Mentor through the MCP: fires a turn, polls, reads the model
 back with `context_entities` / `context_actions` / `context_screens` and publishes.

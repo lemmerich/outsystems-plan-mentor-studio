@@ -12,7 +12,7 @@ changed, why, and the file-by-file status.
 ## Versioning
 
 This fork uses **semantic versioning with a fork suffix**: `<upstream-version>-ms.<fork-iteration>`.
-Current: **v0.7.0-ms.2**, based on upstream v0.7.0 (commit `aae2e14`).
+Current: **v0.8.0-ms.1**, based on upstream v0.8.0 (commit `a1ef0f4`).
 
 | Doc | Answers |
 |---|---|
@@ -69,6 +69,22 @@ Spec  →  SPEC-REVIEW.md  →  demo script  →  prototype  →  waves
 
 Three things the operator types across a whole project: the spec, `W3 done`, and
 occasionally `W3 done but it built two screens`.
+
+## The recipes reference
+
+`skill/references/recipes.md` is the companion to `prototype-to-widgets.md`:
+where that file explains *why* a mechanical gap happens, `recipes.md` gives
+the copy-paste Mentor Studio prompt block that already encodes the fix —
+for recurring UI patterns like a dropdown with an "all"/empty option, a
+modal containing a form, a sticky footer, per-row list controls, bulk-save
+actions, icon+label link wrapping, reserved theme class names,
+`MasterDetail`, appearance resets, external fonts, dumping every CSS rule
+that currently matches an element before writing a fix prompt for it, and
+retiring an old stopgap in the same turn a real fix replaces it. Check it
+before writing a `prompts/wN.md` block for any UI pattern the wave is
+building — a recipe used verbatim (names adjusted) skips the multi-turn
+trial-and-error a natural-language description of the same pattern tends
+to produce.
 
 ## Status
 

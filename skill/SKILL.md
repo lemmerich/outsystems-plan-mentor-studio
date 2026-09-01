@@ -1,6 +1,6 @@
 ---
 name: outsystems-plan-mentor-studio
-version: "0.7.0-ms.2"
+version: "0.8.0-ms.1"
 date: "2026-08-30"
 upstream: "0.7.0"
 description: >
@@ -250,6 +250,15 @@ six-step loop, and it applies whether the wave is brand new or a fix on top
 of one already published. **Skip a step only when the user explicitly says
 to; never skip a step silently.**
 
+**Before starting the cycle for the next wave, re-check the plan itself**:
+re-read that wave's `spec-wN.md` in full (not from memory — see
+`prototype-to-widgets.md` #16) and check whether anything discovered while
+executing *previous* waves changes what this wave should do — a data-model
+exception granted mid-build, a renumbering, a scope item that moved, a bug
+fix that already covers part of this wave's stated scope. Update
+`RUNBOOK.md`/`spec-wN.md` first if something's stale, *then* start step 1.
+This is a standing check, every wave, not a one-time planning-phase step.
+
 ```
 1. Prototype    — build or evolve the screen(s) in the living prototype (HTML)
 2. Approve      — get the user's explicit sign-off on the prototype change
@@ -262,15 +271,75 @@ to; never skip a step silently.**
                   Once clear to proceed, the operator publishes and reports back
 4. Compare      — open the published screen and the approved prototype
                   side by side; list every visual/behavioral difference —
-                  don't stop at the first one found
+                  don't stop at the first one found. When the wave
+                  introduces a new computed/derived field (a score, a
+                  status, a rollup), also check every OTHER already-built
+                  screen that lists or references the same entity — a wave
+                  spec is typically written against the one screen the
+                  feature "lives on," and an existing list/summary screen
+                  elsewhere showing a static "—" placeholder for that same
+                  data is easy to miss because it renders without error,
+                  just wrong data. **For any new form/card container,
+                  explicitly re-measure the box-model facts from step 3
+                  against the live screen — container width (capped, or
+                  did it stretch to fill-parent?) and inter-element spacing
+                  (button gaps, padding) — by measuring, not eyeballing.**
+                  A prompt that skipped stating those facts (the single
+                  most common authoring gap — see
+                  `references/prototype-to-widgets.md` #2) will produce a
+                  screen that "looks right" in a quick glance but is
+                  visibly wrong on width/spacing once actually compared.
 5. Reconcile    — for each difference: fix the app (usually), or fix the
                   prototype/spec if the difference was the prototype's own
                   oversight (see the prototype-first principle) — then
-                  re-publish and go back to step 4, within the budget below
+                  re-publish and go back to step 4, within the budget below.
+                  **Before writing any CSS fix prompt targeting an element
+                  a PRIOR wave already patched** (any overlay/modal/card
+                  named in an earlier `wN-fix.md` prompt), first dump every
+                  stylesheet rule that currently matches that element on
+                  the live page (see `references/recipes.md` → "fixing CSS
+                  on any element that has been patched before") — a prior
+                  wave's leftover workaround (often `!important` on a broad
+                  `> *` selector) silently outranks a plain new rule
+                  regardless of specificity, and Mentor cannot see this
+                  itself since it never renders the page. If a fix's
+                  post-publish measurement comes back UNCHANGED, that is
+                  the signature of exactly this — don't write a stronger
+                  version of the same fix, run the rule dump instead. And
+                  when a turn replaces an old stopgap with the real fix,
+                  the SAME turn must explicitly remove the stopgap —
+                  otherwise it lies dormant until some later, unrelated
+                  wave touches the same element and loses to it.
+                  **Any fix touching the platform shell's sidebar/header/
+                  nav containers (`.aside-navigation`, `.header`,
+                  `.app-menu-content`, `.main`) must be re-verified at
+                  both a desktop and a tablet/mobile viewport width before
+                  being considered done** — see `references/recipes.md` →
+                  "any CSS fix touching the platform shell's sidebar/
+                  header/nav containers." A fix scoped to one width can
+                  silently break the platform's built-in responsive
+                  drawer/hamburger behavior at the other, with zero
+                  validation errors and no visible sign at the width it
+                  was tested on.
 6. Test         — update/add E2E test cases for what changed, then ask the
                   user whether to run them now (never auto-run — see the
                   RUNBOOK's per-wave procedure)
 ```
+
+**A prior approval is not a standing approval.** A prototype screen may have
+been approved long before its wave is actually executed (e.g. all 8 waves
+planned and their screens sketched up front, then executed one wave at a
+time over separate sessions). When a wave's turn comes, re-open its
+prototype screen and walk it with the user again **before** step 3 (Emit) —
+don't treat "approved" from the planning pass as still current. Digging into
+a screen's real details at execution time routinely surfaces things the
+planning pass didn't: a field that needs to come from an upstream document
+instead of being typed, a control that's missing a state, wording that reads
+as internal jargon rather than end-user copy. Fold what surfaces into the
+prototype/spec, get sign-off on the refined version, then Emit. Skipping
+this re-confirmation doesn't save a step — it just moves the same rework to
+after publish, where it costs a Compare/Reconcile round instead of a prompt
+edit.
 
 **Plan check — free when Mentor Studio offers it, never required.** Some
 Mentor Studio builds return a written plan before touching the module and
@@ -439,8 +508,22 @@ If provided, extract:
 - Component patterns (list rows, badges, step indicators)
 - Any existing block inventory from the target OutSystems UI version
 
+**Before carrying any extracted color or component forward, read
+[`references/outsystems-ui-design-tokens.md`](references/outsystems-ui-design-tokens.md)**
+— OutSystems UI ships a complete token system (semantic color roles, a
+12-hue × 7-shade ramp, an 11-step neutral scale, spacing/radius/shadow
+scales, a responsive type scale) and ~90 named UI patterns. Map every
+extracted brand color onto the closest real token (Section 1 of that file)
+instead of carrying it forward as a raw hex value, and map every screenshot
+element onto the closest named pattern (Section 6) instead of a generic
+description. This is what makes a wave prompt say `Card` instead of "a
+card-like container," and `--color-primary` instead of a made-up
+`--accent` nothing in the platform actually reads.
+
 If not provided, note that the wave specs will have minimal UI direction and
-the zero-hex-literal gate cannot be enforced.
+the zero-hex-literal gate cannot be enforced. The token reference above still
+applies even with no visual direction supplied — it becomes the default
+palette instead of a mapping target.
 
 ### Question 4 — The value path
 
@@ -592,6 +675,22 @@ every later wave re-litigates it, and design direction that reaches a prompt as
 output is a theme whose variables later prompts refer to **by name**, and a shell
 that renders.
 
+**Those variables are the platform's own, not invented ones.** Read
+[`references/outsystems-ui-design-tokens.md`](references/outsystems-ui-design-tokens.md)
+before writing W0's theme table. OutSystems UI already ships `--color-primary`,
+`--color-secondary`, `--color-success/-warning/-error/-info` (+ `-light`
+variants), an 11-step `--color-neutral-0..10` ramp, a 12-hue × 7-shade color
+system, and spacing/radius/shadow/typography scales — every native widget in
+the app already reads these. W0's theme table says *which brand value
+overrides which platform token* ("`--color-primary` → `#0e8873`," not
+"`--accent` → `#0e8873`"). Inventing a parallel `--accent`/`--danger`/
+`--neutral-soft` set instead means the brand looks right only on the screens
+this project's prompts happened to touch, and silently wrong (default
+OutSystems blue) on every native component and every screen a future wave
+adds without rereading this file. The one legitimate exception: a role the
+platform genuinely has no token for — note that explicitly in the theme
+table rather than silently adding a variable.
+
 **W0 has two parts, and the second one is a Mentor Studio prompt, not just
 AppGen.** Part 1 (manual/AppGen): create the app on the artifact provisioned
 in Step 0, base OutSystems UI theme, shell/nav that renders. Part 2 (Mentor
@@ -696,6 +795,18 @@ facts do not survive a prose-only prompt — see "The prototype-first
 principle" above and `references/prototype-to-widgets.md` for the recurring
 failure modes behind each of these three facts.
 
+**Before writing the Mentor prompt, check `references/recipes.md` for the
+UI pattern this wave is building.** Fourteen recurring patterns — a
+dropdown with an "all"/empty option, a modal containing a form, a sticky
+footer, per-row list controls, bulk-save actions, icon+label link
+wrapping, reserved theme class names, MasterDetail, appearance resets,
+external fonts, and more — have copy-paste prompt blocks there that
+already encode the fix for every mechanical gap hit building that pattern
+the first time. Use the recipe verbatim (adjusted for names) instead of
+re-describing the pattern from scratch — a natural-language description
+of the same pattern is exactly what produced the multi-turn fixes
+`recipes.md` now exists to prevent.
+
 ### Actions
 [For each action: name, inputs, outputs, exact error messages verbatim]
 
@@ -749,6 +860,10 @@ Key rules:
 - `TableRecords` `data-test` attributes land on `<td>` cells, not `<tr>` — locate rows via `page.locator('tr').filter({ hasText })`.
 - A data-driven dropdown defaults to its placeholder — always call `selectOption({ label })` before asserting the happy path.
 - Status badges bound to the wrong column show the English `Label` instead of the PT-BR `LabelPtBr` — assert the exact localized string.
+- `getByRole('radio'/'checkbox'/'button', { name })` matches by substring by default — two options where one's label is a prefix of another's (e.g. "Não" / "Não se aplica") resolve to 2 elements and throw a strict-mode violation. Pass `{ name, exact: true }` whenever any two option labels in the same group could overlap as substrings.
+- A helper function that clicks a button which triggers navigation must wait for that navigation to actually land (`page.waitForURL(...)` or wait for a locator unique to the destination screen) before returning — a caller that does `const url = page.url()` immediately after calling the helper can capture the pre-navigation URL if the helper returns before the redirect completes, then silently operate on the wrong screen for the rest of the test.
+- When manually verifying a reactive OutSystems screen's behavior via browser automation (not through Playwright's own `.click()`, which is a trusted event) — e.g. probing a bug hypothesis with `element.click()` or dispatching synthetic `input`/`change` events via `page.evaluate` — expect those synthetic events to update the DOM's local `checked`/`value` state but **not** reliably fire the framework's own reactive `OnChange` binding. A synthetic click can look like a repro failure (or success) that has nothing to do with the app: confirm any finding from synthetic interaction with a **real** click (via a genuine pointer-driven click tool, or Playwright's own `.click()`) before reporting it as a bug.
+- When a wave's prototype introduces a new dynamic visual block (counters, computed labels, status pills) that a test will need to assert on, put explicit `data-test` attribute names for its pieces directly in the Mentor prompt. Without it, Mentor names elements after its own internal widget IDs (e.g. `#ClassificacaoPill`, `.audit-resumo-score-val`) that only surface after the fact via DOM inspection — working, but an avoidable extra round-trip.
 
 **Tests are written into the spec but executed separately.** When a wave is
 implemented and published, ask:
@@ -846,7 +961,7 @@ updated as waves execute. It contains:
    → manual static gate (module-tree read-back) → compare against the
    prototype → reconcile within budget → ask about tests
 6. **Mentor prompt guardrails** — prepended to every Mentor prompt, every wave
-7. **Static gate checklist** — entity, action and screen counts read back from the ODC Studio module tree by the operator, zero hex literals, no unauthorized roles, **screen matches the approved prototype** (layout, grouping, negrito/weight, dynamic vs static text — verify by opening the published screen and comparing, not by re-reading the spec)
+7. **Static gate checklist** — entity, action and screen counts read back from the ODC Studio module tree by the operator, zero hex literals, no unauthorized roles, **screen matches the approved prototype** (layout, grouping, negrito/weight, dynamic vs static text — verify by opening the published screen and comparing, not by re-reading the spec). **For any screen rendering a repeated list of rows with a selectable control per row** (radio group, dropdown, checkbox — an audit checklist, a survey, a set of per-item toggles): interact with the control in **two different rows**, not just one, and confirm the first row's selection survived the second row's click. A single-row test cannot catch a control accidentally bound to one shared screen variable instead of a per-row list attribute — that bug makes every row mirror whichever row was clicked last, and looks completely correct if only one row is ever touched during verification (see `references/prototype-to-widgets.md` #15).
 8. **Failure playbook** — what to do when things go wrong
 9. **Timing log** — one row per milestone, cumulative across waves
 10. **Never list** — absolute prohibitions
@@ -860,7 +975,10 @@ so they are never forgotten:
 ```
 GUARDRAILS (apply to every screen and action in this wave):
 
-1. No hex literals. Every color must be a theme variable.
+1. No hex literals. Every color must be one of OutSystems UI's own theme
+   tokens (`--color-primary`, `--color-error`, `--color-neutral-N`, a hue
+   from the 12-hue ramp, etc. — see references/outsystems-ui-design-tokens.md),
+   overridden with the brand's value, never a project-invented variable name.
 
 2. CSS token declared ≠ CSS token applied. After declaring variables in the
    theme stylesheet, you must also set `background-color`, `color`, and
@@ -879,7 +997,9 @@ GUARDRAILS (apply to every screen and action in this wave):
    Space each node so its label is fully visible and individually selectable.
    Overlapping nodes are a defect, not a style choice.
 
-5. Use verified OutSystems UI block names only — no bare HTML elements.
+5. Use verified OutSystems UI block names only — no bare HTML elements. See
+   references/outsystems-ui-design-tokens.md Section 6 for the canonical
+   pattern inventory before naming or describing anything.
 
 6. ODC terminology only: no "Service Studio", no "eSpace".
 
@@ -953,3 +1073,4 @@ GUARDRAILS (apply to every screen and action in this wave):
 - [ ] The demo script is in the RUNBOOK verbatim and covered by `demo.spec.ts`
 - [ ] Every `prompts/wN.md` prompt is a single self-contained fenced code block per `Módulo alvo:` (guardrails included inline) — no prose the operator must merge in before pasting, and every non-prompt line outside a fence is marked `> **Nota do operador (não copiar):**`
 - [ ] Step 0 — Provisioning has no wave number and no row in the wave table — it is its own RUNBOOK section only
+- [ ] W0's theme table maps brand colors onto real OutSystems UI tokens (`--color-primary`, `--color-neutral-N`, etc. — see references/outsystems-ui-design-tokens.md), not invented variable names
