@@ -1110,6 +1110,151 @@ attribute is one DOM level too high.
 
 ---
 
+## Recipe: idempotent seed action that must insert one specific missing record among several already-existing ones
+
+**When to use:** any "load demo data" seed action that gets extended in a
+later wave to add one more record to a set it already seeded earlier
+(e.g. an extra status value, an extra example row).
+
+**The trap this avoids:** an idempotency guard written as "if the FIRST
+record already exists, do nothing" (checking only one representative row,
+then inserting the whole batch) works correctly the first time the action
+ever runs, but permanently blocks any LATER addition to that same batch —
+once the first record exists, the guard's early-return skips the entire
+action body, including a new insert added afterward for a record that
+doesn't exist yet. Re-running the seed after the extension looks
+successful (no error, "idempotent" claim still technically true for the
+original 5 records) but silently never reaches the 6th.
+
+**Prompt block:**
+
+```
+"<SeedAction>" precisa continuar idempotente ao adicionar o registro
+"<NovoRegistro>" a um lote que já existia. NÃO usar um guard de nível
+lote ("se o primeiro registro já existe, termina tudo") — isso bloqueia
+qualquer registro adicionado depois que os originais já foram semeados.
+Cada registro do lote (incluindo os que já existiam antes desta wave)
+deve ser checado e inserido INDIVIDUALMENTE por sua chave natural (ex.:
+Identificador) — sem nenhum "return antecipado" de nível tabela que pule
+os que ainda não foram checados.
+```
+
+**Verify after publish:** run the seed action a second time on a database
+where the original records already exist — the new record must appear.
+A seed that only "worked" the very first time it ever ran, before any
+records existed, hasn't proven this — always test the extension case.
+
+---
+
+## Recipe: a per-row visual style condition is correct but the row's click/navigation isn't gated by the same condition
+
+**When to use:** any list where only some rows should be interactive
+(clickable, navigable) based on a status/condition — not just styled
+differently.
+
+**The trap this avoids:** the CSS class or style expression that decides
+whether a row *looks* clickable (cursor, hover, background) can be
+perfectly correct — conditioned on the right field, verified by reading
+the expression back — while the actual click handler or row-click/
+navigation binding is wired unconditionally to every row, independent of
+that same expression. These are two separate bindings in the widget tree
+(a style/class property and an on-click/navigate action), and fixing one
+does not touch the other — a prompt asking only "make ineligible rows not
+look clickable" can get exactly that: correct styling, identical
+click-through behavior on every row.
+
+**Prompt block:**
+
+```
+Em "<Lista>", a classe/estilo que indica linha clicável já está
+condicionada corretamente a "<condição>" — mas isso é uma propriedade
+visual separada do comportamento de clique/navegação em si. Localize
+ONDE o clique/navegação da linha está de fato ligado (evento da linha
+inteira, ou de cada célula individualmente) e envolva-o na MESMA
+condição "<condição>" — não assuma que corrigir o estilo também corrige
+o comportamento; são dois bindings diferentes no widget.
+```
+
+**Verify after publish:** don't just inspect the CSS class name applied
+to each row — actually click a row that should NOT be interactive and
+confirm no navigation/action fires (URL unchanged, no new panel opens).
+A row correctly missing the "clickable" class can still have a working
+click handler underneath it; only clicking proves the negative case.
+
+---
+
+## Recipe: a dropdown/select populated from a joined entity shows a generic placeholder label instead of the related record's name
+
+**When to use:** any dropdown, select, or list whose display label needs
+a field from an entity OTHER than the one the query's primary source is
+— e.g. a version picker showing the parent record's name, a foreign-key
+picker showing the referenced entity's title.
+
+**The trap this avoids:** a query/aggregate built against the entity
+that actually needs to be selected (a version, a foreign key row) can
+compile and run without ever joining the RELATED entity that holds the
+human-readable name — the dropdown then falls back to showing the
+record's own literal Id, a hardcoded static string, or a generic
+placeholder like "Item #N" instead of the name a user would recognize.
+This happened three separate times in one project (a Ficha picker, a
+Protocolo picker, and a DevTools debug picker), each time because the
+query fetched the versioned/child entity alone without joining back to
+its parent for the label.
+
+**Prompt block:**
+
+```
+O dropdown "<X>" precisa mostrar "<CampoDeExibição>" (da entidade
+"<EntidadePai>"), não apenas o Id ou um rótulo genérico do registro que
+a query já busca ("<EntidadeFilha>"). Junte "<EntidadeFilha>" com
+"<EntidadePai>" na query/aggregate que popula esse dropdown e monte o
+rótulo a partir do campo real (ex.: EntidadePai.Nome + " · v" +
+EntidadeFilha.NumeroVersao), não a partir de um valor fixo ou do Id.
+```
+
+**Verify after publish:** read `[...select.options].map(o => o.text)` in
+the browser — every label must be a real, distinguishable name, never a
+literal "0", the entity's own type name repeated for every option, or a
+generic "Item #N" placeholder that doesn't vary meaningfully by record.
+
+---
+
+## Recipe: a "success" message shown without confirming the write actually happened
+
+**When to use:** any action (especially a DevTools/debug simulation
+button, but also any regular save/update flow) that shows a static
+success message after calling a create/update node.
+
+**The trap this avoids:** a flow that calls an update/create node and
+then unconditionally shows "Salvo com sucesso"/"Concluído" regardless of
+whether that node found/changed anything degrades into the exact same
+failure mode as no error handling at all — except it now actively lies,
+which is worse for debugging than silence, because it stops anyone from
+suspecting the write failed. This compounds badly with any bug that
+makes a lookup/filter match zero rows (see the Identifier/Text gotcha in
+`mentor-studio-prompt.md` §4b) — the update silently changes 0 records,
+and the success message papers over it completely.
+
+**Prompt block:**
+
+```
+Depois de "<AçãoDeEscrita>", não mostrar a mensagem de sucesso
+incondicionalmente. Busque o registro afetado de novo e confirme que o
+campo esperado ("<Campo>") realmente mudou para o valor pretendido antes
+de exibir "<mensagem de sucesso>" — se não mudou, mostre um erro
+específico em vez disso ("Registro não encontrado ou não alterado"),
+nunca a mensagem de sucesso.
+```
+
+**Verify after publish:** trigger the action, then independently re-fetch
+the affected record (a fresh page load, a direct API/network response
+check) — the field must actually hold the new value. A success message
+alone is not evidence; this recipe exists specifically because it was
+observed lying twice in the same wave, once for each of two separate
+bugs it was masking.
+
+---
+
 ## When this file isn't enough
 
 These are the two patterns this project actually hit more than once.

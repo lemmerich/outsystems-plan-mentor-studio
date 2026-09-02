@@ -12,7 +12,7 @@ changed, why, and the file-by-file status.
 ## Versioning
 
 This fork uses **semantic versioning with a fork suffix**: `<upstream-version>-ms.<fork-iteration>`.
-Current: **v0.8.0-ms.6**, based on upstream v0.8.0 (commit `a1ef0f4`).
+Current: **v0.8.0-ms.9**, based on upstream v0.8.0 (commit `a1ef0f4`).
 
 | Doc | Answers |
 |---|---|

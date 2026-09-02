@@ -8,6 +8,75 @@ and this project uses semantic versioning with a fork suffix:
 
 ---
 
+## [0.8.0-ms.9] — 2026-09-02
+
+### Added
+- 4 new recipes in `recipes.md`, distilled from a wave whose async
+  agent-processing feature needed 6 rounds of Compare/Reconcile to
+  actually work end to end:
+  1. **Idempotent seed extended with a new record**: a batch-level "if
+     the first record exists, skip everything" guard permanently blocks
+     any record added to that batch in a LATER wave — check each record
+     individually by its natural key, never early-return at table level.
+  2. **Row style condition correct, but click/navigation not gated by
+     the same condition**: a row's "looks clickable" CSS class and its
+     actual click/navigate binding are two separate widget-tree
+     properties — fixing one doesn't touch the other; verify by
+     clicking an ineligible row, not by reading its class name.
+  3. **Dropdown/select missing a join to the entity that holds the
+     display name**: a query built against the child/versioned entity
+     alone renders a literal Id or generic placeholder instead of the
+     parent's real name — hit 3 times in one project (Ficha picker,
+     Protocolo picker, a DevTools debug picker) before generalizing it.
+  4. **Success message shown without confirming the write's effect**:
+     unconditionally showing "Salvo com sucesso" after a create/update
+     node degrades into the same silent-failure shape as no error
+     handling, except now actively misleading — re-query the record and
+     branch on whether it actually changed before claiming success.
+- Emit-step checklist in `SKILL.md` gained two spec self-consistency
+  checks to run against a wave's own CHANGES list before finalizing the
+  prompt: (a) if the spec claims the data model "closes" this wave,
+  check every field a LATER wave's spec assumes already exists — add it
+  now as nullable rather than discovering the gap when this wave's own
+  seed data needs somewhere to put a value; (b) every validation/guard
+  action created must have the CHANGES list state explicitly which
+  other action calls it — an action that exists but is never wired in
+  publishes clean and simply never fires.
+
+## [0.8.0-ms.8] — 2026-09-01
+
+### Added
+- 3 new gotchas in the prompt-writing reference, caught in one wave that
+  needed 4 stacked fixes to actually work: (1) comparing an entity's Id
+  (`Identifier`) against a `Long Integer`-converted value compiles fine
+  but silently matches zero rows at runtime — compare as `Text` on both
+  sides via `IdentifierToText` instead; (2) a "success" message shown
+  without re-querying the record afterward degrades into the same
+  silent-failure shape as no error handling, just actively misleading —
+  verify the write's effect before declaring success; (3) an ODC
+  dropdown can look visually selected while its bound variable is still
+  `EmptyValue`, because a visual current-option isn't the same as an
+  active select interaction — add an explicit fallback for the
+  unselected case in any "pick one, then act" debug/DevTools widget.
+
+## [0.8.0-ms.7] — 2026-09-01
+
+### Added
+- New gotcha in the prompt-writing reference: a cross-module ODC event
+  (or Service Action) can be created exactly as specified — right name,
+  right params, fired correctly — and still be invisible to the
+  subscribing module, because ODC events default to **Private**
+  visibility. The gap only surfaces later, in the *other* module's
+  session, as "this event doesn't exist," which reads like the event
+  was never built at all. Any prompt creating an event/action
+  specifically for cross-module consumption must now state the
+  visibility requirement explicitly ("set to Public") rather than
+  relying on "expose an event" to imply it — caught live when a W4-style
+  wave's agent-completion event was built correctly but left Private,
+  and the caller's Mentor session couldn't see it until a one-line
+  re-prompt fixed visibility and the owning module was actually
+  published (not just saved).
+
 ## [0.8.0-ms.6] — 2026-09-01
 
 ### Fixed

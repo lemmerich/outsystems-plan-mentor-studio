@@ -1,7 +1,7 @@
 ---
 name: outsystems-plan-mentor-studio
-version: "0.8.0-ms.6"
-date: "2026-08-30"
+version: "0.8.0-ms.9"
+date: "2026-09-02"
 upstream: "0.7.0"
 description: >
   Guides you from a blank folder to a complete OutSystems build plan through
@@ -282,7 +282,22 @@ This is a standing check, every wave, not a one-time planning-phase step.
                   are genuine platform limits, write the test around the
                   limitation from the start (e.g. `.closest('tr')`) instead
                   of spending a fix-prompt round asking for something Studio
-                  doesn't expose. If Mentor Studio
+                  doesn't expose. **Also run two self-consistency checks on
+                  the CHANGES list itself, not just against Mentor's known
+                  gotchas:** (a) if the spec claims the data model "closes"
+                  this wave, check every field a LATER wave's spec assumes
+                  already exists on an entity this wave creates (a score, a
+                  classification, anything a future screen displays or a
+                  seed row needs a value for) — add it now as a nullable
+                  field even if nothing writes to it yet, rather than
+                  discovering the gap when this wave's own seed data has
+                  nowhere to put a value it's supposed to show; (b) for
+                  every validation/guard action the CHANGES list creates
+                  (a `Validar*`/`Check*` action), confirm the SAME list
+                  states explicitly which other action calls it and at what
+                  point — an action that exists but is never wired into the
+                  flow that needed it publishes cleanly, passes its own
+                  isolated test if any, and simply never fires. If Mentor Studio
                   replies with a written plan instead of executing
                   immediately (it often does, and asks "proceed or
                   discard"), the operator pastes that plan back before
