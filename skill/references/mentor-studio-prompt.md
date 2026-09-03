@@ -345,6 +345,8 @@ because they are ODC platform defaults rather than something Mentor decides:
 | A filter/query comparing an entity's own Id attribute (type `Identifier`) against a value converted to `Long Integer` compiles without warning but the query returns zero rows at runtime | ODC reports this as "Unexpected Data Type" in the model, but Mentor can still generate and publish it — the failure only shows up as the query silently finding nothing, which then cascades into whatever depends on that record (an update that "succeeds" but changes 0 rows, a null-reference a few nodes later). Converting an Id `Identifier` to `Long Integer` (or vice versa) is the wrong move even though both are numeric under the hood — they are distinct types to ODC's type checker in a way that specifically breaks entity filters. | Compare entity Ids as `Text` on both sides instead of crossing into `Long Integer`/`Identifier` casts: `IdentifierToText(Entity.Id) = SomeTextParam`. This is especially relevant right after a value has round-tripped through a Text parameter (e.g. an Id serialized into an event or a DevTools input) — the natural instinct is to convert it back to a typed Id or Long Integer to "match" the entity's own Id type, but the safer, reliably-working comparison keeps both sides as Text. |
 | An action reports success ("Simulação concluída", "Salvo com sucesso") but the record it was supposed to change is unchanged when checked independently (fresh query, page reload) | A "success" message shown unconditionally after a database operation — without querying the record back afterward to confirm the value actually changed — silently degrades into exactly the same failure mode as no error handling at all, except now it actively lies. This is a natural blind spot because from the flow's own perspective the write node "ran without throwing," which reads as success even when the write's WHERE clause (see the Identifier/Long Integer gotcha above, a common cause) matched zero rows. | Don't accept a static success message as evidence a write worked — after any create/update meant to be user-visible, re-query the affected record and branch: show the intended success message only if the expected field(s) actually hold the new value, otherwise show a specific error. Ask for this explicitly in the prompt ("verify the update took effect before showing success") when the action's own correctness is in question, not just when something visibly errored. |
 | A dropdown appears to have an option selected (visually highlighted, correct label showing) but the screen variable bound to it is still the widget's `EmptyValue`/default when an action reads it | ODC dropdowns distinguish "an option is visually current" from "the user actively fired the selection interaction" — a user who clicks the dropdown open and then clicks away without click-selecting a specific `<option>` row can leave the bound variable at its configured `EmptyValue` (e.g. `NullIdentifier()`) even though something is showing in the closed control. Downstream code that trusts the variable directly then operates on an empty/default Id, which — combined with the Identifier/Text gotcha above — often shows up as "record not found for Id=0" rather than an obviously dropdown-shaped bug. | When a dropdown feeds an action that only makes sense with a real selection (not the empty/first state), add an explicit fallback for the case where the bound variable still equals `EmptyValue` when the action fires — e.g. default to the first item of the list it was populated from — rather than assuming a rendered option implies an active selection. Worth naming as a known risk in any prompt building a "pick one from a short list, then act on it" DevTools/debug widget, since these are exactly the low-stakes contexts most likely to skip a real select-and-confirm interaction pattern. |
+| A filter/join comparison is already correctly Text-based (see the Identifier gotcha above) and the query still returns zero/wrong rows after a fix attempt that changed nothing observable | The comparison expression was never the bug — the foreign key column it reads is null or points at a row that no longer exists (an orphaned FK from an earlier wave's seed action, a record created before that FK was populated). A null/orphaned FK produces the exact same symptom as a broken comparison — join finds nothing, no error — so it's easy to spend several rounds rewriting the expression when the expression was already right. One project spent 4 reconcile rounds cycling `LongIntegerToText`/`IdentifierToText`/casts before checking the data and finding the FK columns were simply null in the seed. | After the **first** comparison-expression fix produces no observable change, stop varying the expression and check the raw data instead: open the entity in the ODC Portal Data view (or ask Mentor to report the actual FK column values for a specific record) before writing a second expression variant. If the FK is null/orphaned, the fix belongs in whatever action creates/seeds that record, not in the aggregate reading it. |
+| Native `<select>` options render with light/white background and hard-to-read text in an otherwise dark-themed app, even though the closed field is themed correctly | Most browsers render a plain `<select>`'s open options popup with browser/OS-native colors, ignoring the page's own dark-theme CSS — only the closed control can be reliably restyled. If the option text color was written assuming a dark background (a light gray meant to sit on a dark card), the result is light-gray-on-white: technically styled, practically illegible. | Set an explicit **dark** text color on `<option>` elements wherever the app uses a plain select on a dark theme — don't assume the closed field's styling carries into the popup. Two things are effectively uncontrollable across browsers and not worth a further reconcile round once confirmed: the popup's own background color, and the highlight color of the currently-selected row — these are genuine platform ceilings, not an unfixed prompt. |
 
 ## 5. Anti-patterns
 
@@ -356,6 +358,38 @@ because they are ODC platform defaults rather than something Mentor decides:
   `Columns2` are the words. "A card-like container" produces a `<div>`.
 - Asking for two screens because they are obviously related. The cap is one.
 - Re-sending a whole wave after a partial success.
+- **Referencing test files, spec test-case IDs, or "run the suite" inside a
+  Mentor prompt** (e.g. "this fixes the W7-02 test case" or "rodando
+  tests/w5.spec.ts, os 3 casos passam"). Mentor Studio has no access to the
+  `tests/` folder and no notion of which case is which — this text is pure
+  noise to whoever pastes the prompt. State the expected behavior manually,
+  in terms of what to click and what should appear on screen, the same way
+  you would if no automated test existed yet.
 - Letting the operator improvise the paste. If the prompt needs a tweak, the
   tweak goes into `prompts/wN.md` first, then gets pasted. Otherwise what ran
   is not what is on disk and the retrospective is fiction.
+
+## 6. Bake in proven patterns from the first prompt, not as a later fix
+
+A pattern already proven to work earlier in the *same* project (or documented
+as a standing gotcha in this file) belongs in the **original** prompt for any
+new wave that creates the same kind of element — never left for the operator
+to notice its absence and ask for as a separate reconcile round. The clearest
+example: any button wired to a server action should get a loading state
+(a spinner rendered inside the button, `disabled` while the call is in
+flight, reverting on completion) — state this in CHANGES the first time such
+a button is specified, the same way "no hex literals" is restated every wave
+rather than assumed once. Re-stating an established pattern costs one line;
+the operator finding its absence and asking for it costs a full round.
+
+## 7. Before diagnosing a "regression," check whether your own testing caused it
+
+A live OutSystems app has no transaction rollback between verification
+clicks. Reopening a finalized record for correction during one wave's gate
+check, then never re-finalizing it, makes a *later*, unrelated wave's
+dashboard or list look wrong for a data reason that has nothing to do with
+that later wave's code — and a diagnostic round chasing it as a code bug will
+correctly report "the logic looks fine" every time, because it is. Before
+writing a diagnostic prompt asking Mentor to explain data that looks missing
+or wrong, re-trace what your own session did to that specific record first —
+it is free and often faster than a round-trip through Mentor.

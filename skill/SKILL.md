@@ -1,6 +1,6 @@
 ---
 name: outsystems-plan-mentor-studio
-version: "0.8.0-ms.9"
+version: "0.8.0-ms.10"
 date: "2026-09-02"
 upstream: "0.7.0"
 description: >
@@ -327,6 +327,17 @@ This is a standing check, every wave, not a one-time planning-phase step.
                   prototype/spec if the difference was the prototype's own
                   oversight (see the prototype-first principle) — then
                   re-publish and go back to step 4, within the budget below.
+                  **Each reconcile fix is its own file, never a section
+                  appended inside `wN.md`**: `prompts/wN-fixM-<slug>.md`,
+                  where `M` increments in the order fixes were sent for that
+                  wave (`w5-fix1-...`, `w5-fix2-...`) so the chronological
+                  order is legible from the filename alone. `wN.md` holds
+                  only the wave's original prompt plus operator notes in its
+                  footer — it does not grow a "Reconcile round N" section
+                  mid-wave. A read-only diagnostic round (§4 above) still
+                  gets its own numbered fix file even though it changes
+                  nothing, since it is still a distinct paste on a distinct
+                  occasion and the operator needs to find it later.
                   **Before writing any CSS fix prompt targeting an element
                   a PRIOR wave already patched** (any overlay/modal/card
                   named in an earlier `wN-fix.md` prompt), first dump every
