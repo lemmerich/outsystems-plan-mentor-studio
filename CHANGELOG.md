@@ -8,6 +8,22 @@ and this project uses semantic versioning with a fork suffix:
 
 ---
 
+## [0.8.0-ms.11] — 2026-09-03
+
+### Added
+- New gotcha in `mentor-studio-prompt.md` §4b: adding a new visibility/enabled
+  condition to a UI element that already has one (e.g. branching answer
+  buttons on an item's weight) can silently replace the existing condition
+  instead of combining with it — Mentor satisfies the literal ask without
+  preserving what the property already contained. Caught by a wave's own
+  regression suite re-running an earlier state the fix's own prompt never
+  mentioned (a read-only/Finalizada record), not by manual verification of
+  the fix's own target case. Fix: name the existing condition explicitly in
+  the prompt ("combine with X, don't replace it") and re-run the
+  already-correct state's own test after any such fix, not just the new one.
+
+---
+
 ## [0.8.0-ms.9] — 2026-09-02
 
 ### Added
