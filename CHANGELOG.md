@@ -8,6 +8,60 @@ and this project uses semantic versioning with a fork suffix:
 
 ---
 
+## [0.8.0-ms.12] — 2026-09-04
+
+### Added
+9 new recipes and 1 gotcha in `recipes.md`/`mentor-studio-prompt.md`,
+distilled from waves W10-W13 (login/roles, drill-down, and the
+métricas-restantes wave):
+
+1. **Zero-valued average rendered as "—"**: a display condition that
+   decides absence-of-data by checking whether the RESULT is `> 0`
+   instead of whether the CONTRIBUTING COUNT is `> 0` hides a
+   legitimate `0` behind the same placeholder as genuinely no data.
+2. **Combined sort/group key decomposed via arithmetic for display is
+   fragile**: grouping by `Year*100+Month` and then decomposing it back
+   via subtraction/division for the label is a second, independent
+   place to get wrong — carry Year and Month as separate values instead.
+3. **Empty/absent filter parameter treated as "match empty string"**:
+   a "no filter" entry point that passes an empty parameter instead of
+   omitting it can land in the same OR-condition branch as an active
+   empty-value filter, matching zero rows instead of everything.
+4. **E2E test forcing a state change must read the current value
+   first**: alternating between 2 hardcoded option indices to force a
+   change can coincide with the already-saved state of a shared,
+   never-reset seed record — always compute the next option relative to
+   whatever is currently selected.
+5. **Playwright `baseURL` needs a trailing slash**: without one,
+   relative `page.goto('SubPath')` resolves against the domain root,
+   silently dropping the app's own sub-path from the URL.
+6. **`browser.newContext()` inherits the project's `storageState`**:
+   a context meant to be anonymous needs `storageState: undefined`
+   passed explicitly inside a project that already configures one.
+7. **Fixing the login-success redirect doesn't fix every other path
+   to a role-gated Home screen**: reload, bookmark, and direct
+   navigation to the bare module root still hit the old Home screen
+   directly unless the Home screen itself (not just the login action)
+   becomes role-aware.
+8. Extended the existing "data-test on a repeated list" recipe: some
+   OutSystems table widgets refuse `data-test` on `<tr>` and land it on
+   cells instead, OVER-reporting row count as a multiple, not
+   collapsing to 1 — filter real `<tr>` elements that contain the
+   testid instead of counting it directly.
+9. Extended the existing "row style correct but click isn't gated"
+   recipe: the same style/behavior split cuts the other way too — a
+   hover/cursor affordance can be fully implemented while the actual
+   click/navigate handler is completely absent underneath every
+   element, not just ungated on some of them.
+10. New gotcha in `mentor-studio-prompt.md` §4b: 3 diagnosis-only rounds
+    on the same bug, each reporting the code as correct with a
+    different unconfirmed theory, while the published output never
+    changes — a stalled diagnostic loop, not a harder bug. Escalate to
+    a prescriptive rewrite that eliminates the suspect code path
+    entirely instead of requesting a 4th diagnosis.
+
+---
+
 ## [0.8.0-ms.11] — 2026-09-03
 
 ### Added

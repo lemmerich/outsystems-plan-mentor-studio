@@ -1108,6 +1108,20 @@ JSON.stringify({ count: items.length, firstItemText: items[0] && items[0].textCo
 `firstItemText` looks like every item's text run together, the
 attribute is one DOM level too high.
 
+**The same trap can also go the other way:** some OutSystems table
+widgets (Table Records) refuse a `data-test` on the `<tr>` itself and
+land it on one or more `<td>` cells inside each row instead — a real
+platform limit, not a wording problem with the prompt. Counting the
+attribute directly then OVER-reports (a multiple of the row count, one
+per matching cell, not one per row) instead of collapsing to 1. A
+Playwright locator built as `page.getByTestId(name)` and treated as "one
+per row" silently miscounts in both directions depending on which trap
+applies — the fix for the over-count case is to never count the testid
+directly for row-level assertions: filter the actual `<tr>` elements
+that CONTAIN it instead — `page.locator('tr').filter({ has:
+page.getByTestId(name) })` — which resolves to real rows regardless of
+which DOM level the platform actually attached the attribute to.
+
 ---
 
 ## Recipe: idempotent seed action that must insert one specific missing record among several already-existing ones
@@ -1181,6 +1195,19 @@ confirm no navigation/action fires (URL unchanged, no new panel opens).
 A row correctly missing the "clickable" class can still have a working
 click handler underneath it; only clicking proves the negative case.
 
+**The same separation cuts the other way too:** a prompt asking a card
+or bar to "become clickable, with a hover/cursor affordance" can come
+back with ONLY the affordance done — `cursor: pointer` and a hover
+outline applied correctly to every target element, confirmed by reading
+computed CSS — while the actual click handler or navigation binding is
+completely absent underneath every single one of them, not just
+ungated. The visual half of "clickable" is the trivial, easily-verified
+part; the navigation logic is the entire point of the request and can be
+silently skipped while the prompt's guardrail about "add a hover
+affordance" reads as satisfied. Verify by clicking (not just inspecting
+`cursor` in computed styles) every element that's supposed to navigate,
+not only the ones that shouldn't.
+
 ---
 
 ## Recipe: a dropdown/select populated from a joined entity shows a generic placeholder label instead of the related record's name
@@ -1252,6 +1279,274 @@ check) — the field must actually hold the new value. A success message
 alone is not evidence; this recipe exists specifically because it was
 observed lying twice in the same wave, once for each of two separate
 bugs it was masking.
+
+---
+
+## Recipe: a computed average that legitimately equals zero renders as absent ("—")
+
+**When to use:** any indicator that shows a placeholder ("—", "N/A",
+empty) when there's "no data," computed from an average, sum, or other
+aggregate over a filtered set of records.
+
+**The trap this avoids:** the display condition decides "no data" by
+checking whether the COMPUTED RESULT is truthy/positive (`If(Media > 0,
+Media, "—")`) instead of whether there were any CONTRIBUTING RECORDS at
+all (`If(Count > 0, Media, "—")`). A result that legitimately averages to
+exactly `0` — e.g. every matching record happens to have a zero-day gap
+between two dates, a 0% rate, a balance of 0 — is then indistinguishable
+from "nothing matched the filter," and gets hidden behind the same
+placeholder as genuine absence of data. The two states have opposite
+meanings (a rate of 0% is a real, reportable fact; "no data yet" is a
+different fact) and collapsing them produces a value that reads as
+missing when it is actually the most interesting possible number.
+
+**Prompt block:**
+
+```
+A condição de exibição de "<Indicador>" deve decidir "—" com base em
+SE EXISTE PELO MENOS 1 registro contribuindo para o cálculo (a mesma
+contagem que "<IndicadorRelacionadoQueJáContaCorretamente>" já usa),
+nunca com base em se o RESULTADO da média/soma em si é maior que zero.
+Um resultado igual a 0 é um valor real e deve ser exibido normalmente
+quando há registros — "—" é só para quando não há nenhum registro.
+```
+
+**Verify after publish:** find or construct a case where every matching
+record's value happens to be exactly 0 — confirm the indicator shows the
+real "0" (formatted normally), not "—". Separately confirm the actual
+zero-record case still shows "—".
+
+---
+
+## Recipe: a combined sort/group key decomposed back via arithmetic for display is fragile
+
+**When to use:** any report/chart that groups records by a compound
+period (year+month, year+week) using a single combined value for
+grouping uniqueness (e.g. `Year(Date)*100 + Month(Date)` → `202511`).
+
+**The trap this avoids:** grouping by a single combined integer is a
+reasonable way to guarantee one bucket per period, but then trying to
+recover the separate year and month back out of that combined value via
+arithmetic (`combined - (combined/100)*100` for the month, `combined/100`
+for the year) at DISPLAY time is a second, independent place the same
+information has to round-trip correctly through integer division,
+truncation, and type conversions — and it can silently fail (every row
+falling through to the same "else" branch of a month-name lookup, for
+example) while the grouping itself remains completely correct. This is
+easy to misdiagnose as a query/grouping bug, because the counts per
+group are right — only the LABEL is wrong — and the decomposition
+expression can look correct on paper while producing a wrong result at
+runtime, resisting several rounds of diagnosis because "the code is
+right" isn't the same as "the code produces the right output."
+
+**Prompt block:**
+
+```
+Para "<GráficoOuRelatório>", pare de derivar mês/ano de volta a partir
+do valor combinado usado para agrupar. Calcule e carregue Ano e Mês
+como 2 valores inteiros SEPARADOS desde a origem (Year(Data), Month(Data)),
+nunca combinados num único inteiro e depois desmembrados por subtração/
+divisão/multiplicação. Use esses 2 valores separados para montar o
+texto do rótulo (ex.: nome do mês + "/" + ano) e, se for necessário um
+valor único para garantir 1 grupo por período, mantenha-o só como chave
+de agrupamento — nunca como fonte do texto exibido.
+```
+
+**Verify after publish:** with at least 2 different periods in the
+seeded data, confirm the report shows 2 distinct, correctly-labeled
+rows — not the same label repeated with different counts (a strong
+signal the decomposition is producing a constant fallback value for
+every row, not that rows are being duplicated).
+
+---
+
+## Recipe: an empty/absent filter parameter is treated as "match empty value" instead of "no filter"
+
+**When to use:** any screen/aggregate whose filter condition is built as
+`(Param = "" or Field = Param)` (or the URL-parameter equivalent) to mean
+"no filter when Param is empty, otherwise filter by it."
+
+**The trap this avoids:** one specific caller of that filter — often a
+"show everything, no filter" entry point built alongside several other
+callers that DO pass a real value — can end up passing an empty string
+explicitly as the parameter instead of omitting it, or the "no filter"
+branch of the OR condition can be written slightly differently from how
+every other working filter on the same aggregate handles it. The
+working cases (a real Status value, a real Classificação value) mask the
+bug completely, because they never touch the "is this empty" branch at
+all — only the specific "no filter" case reaches it, and it fails
+silently: 0 rows, no error, dropdowns still showing the correct "Todos"/
+"Todas" default.
+
+**Prompt block:**
+
+```
+Confirme que o caminho "sem filtro" de "<Filtro>" realmente cai na
+condição "(Param = "" or Field = Param)" e resulta em TODOS os
+registros — não em zero. Teste explicitamente esse caso (não só os
+casos com um valor real selecionado), comparando com abrir a tela sem
+nenhum parâmetro de URL: os dois precisam mostrar exatamente a mesma
+lista completa.
+```
+
+**Verify after publish:** open the screen via its "no filter" entry
+point (a link/card meant to show everything) and via its bare URL with
+no parameters at all — both must show the identical, complete list. If
+the "no filter" entry point shows an empty list while the bare URL shows
+everything, the empty-parameter case is being treated as an active
+filter for an empty value.
+
+---
+
+## Recipe: fixing the login-success redirect for a role-gated Home screen doesn't fix every OTHER path back to it
+
+**When to use:** any app where different roles land on different
+screens after login, and one screen (often the one that used to be
+public, or the first screen ever built) is still the module's own Home
+screen.
+
+**The trap this avoids:** when an app becomes role-gated, the screen
+that used to be the shared entry point for everyone typically stays
+configured as the module's Home screen (served whenever the bare app
+URL is opened with no specific path). A fix aimed at "redirect each role
+to the right screen after login" can correctly patch the login SUCCESS
+action's own navigation — Auditor → Consultas, Administrador → Ficha —
+and verifiably work for that one path, while every OTHER way of reaching
+the bare module root (reloading the page, opening a saved bookmark,
+typing the base URL, a link that points at the module root instead of a
+specific screen) still hits the Home screen directly, which still isn't
+role-aware. A role without access to that Home screen gets a working
+login followed immediately by a lockout on the very next reload —
+looking like the login itself is broken, when the actual defect is one
+level up, in what the bare module root does for an already-authenticated
+user.
+
+**Prompt block:**
+
+```
+O redirecionamento por papel foi corrigido só na AÇÃO DE SUCESSO do
+login — mas isso não cobre visitar a raiz do app já autenticado (recarregar
+a página, abrir um favorito, digitar a URL base), que ainda cai direto na
+Home do módulo, sem redirecionamento nenhum. Torne a própria Home do
+módulo consciente do papel — reusando o MESMO mapeamento de papel→tela já
+usado no sucesso do login, não uma segunda lógica separada — ou substitua
+a Home por uma tela leve cujo único trabalho é redirecionar por papel
+antes que a Home antiga (ou qualquer uma delas) rode sua própria checagem
+de acesso.
+```
+
+**Verify after publish:** with an already-valid session (don't log in
+again), navigate to the bare module root directly — not a specific
+screen path. Every role must land on a screen it can actually open, not
+just right after logging in, but on every later visit to that same bare
+URL during the same session.
+
+---
+
+## Recipe: an E2E test forcing a state change must read the CURRENT value first, never alternate between 2 fixed options
+
+**When to use:** any test that needs to click a different option than
+whatever is currently selected, on a control whose state is shared
+across test runs (no reset action exists, or the same seeded record is
+reused by other waves' tests).
+
+**The trap this avoids:** a test written as "click option A if option B
+looks selected, else click option B" (alternating between exactly 2
+hardcoded indices) works the first time, but the target's real current
+state depends on every earlier test run that ever touched the same
+shared record — including runs from other waves, or the same wave run
+twice without a reset. When the current state happens to already be
+whichever option the test was about to click, the click is a genuine
+no-op (correct app behavior: clicking an already-selected value doesn't
+re-trigger a write) and the test's own assumption that "this click
+causes the state to change" is silently false — producing a confusing
+failure that looks like the feature stopped tracking the change, when
+the test's own fixture assumption was just wrong for this run.
+
+**Prompt block (for the TEST file, not the Mentor prompt):**
+
+```
+Antes de clicar para forçar uma mudança, leia qual opção está
+SELECIONADA AGORA (ex.: via classe CSS "selected-*" que o app já usa
+para marcar a atual) e escolha sempre uma opção DIFERENTE dela — nunca
+alternar entre 2 índices fixos, que podem coincidir com o estado já
+salvo de uma execução anterior. Uma forma robusta: escolher o próximo
+índice em sequência a partir do atual (`(atual + 1) % totalDeOpções`),
+garantindo uma mudança real seja qual for o estado de partida.
+```
+
+**Verify:** run the test twice in a row without any reset between runs
+— it must pass both times, proving the selection logic doesn't depend
+on a specific starting state.
+
+---
+
+## Recipe: Playwright `baseURL` without a trailing slash breaks relative `page.goto()` sub-paths
+
+**When to use:** any Playwright config whose `baseURL` points at an app
+mounted under a sub-path (e.g. `https://host/ModuleName`, not just
+`https://host`).
+
+**The trap this avoids:** relative URL resolution treats a `baseURL`
+without a trailing slash as a "file," not a "directory" — `page.goto('Login')`
+against `baseURL: 'https://host/ModuleName'` resolves to
+`https://host/Login`, silently dropping `/ModuleName` entirely, while
+`page.goto('')` (empty string) still works fine because it resolves to
+the `baseURL` verbatim with nothing appended. This makes the bug
+inconsistent and confusing: some navigation patterns in the same suite
+work, others land on a completely different, usually 404 or wrong-app,
+page — and the symptom (a blank page, or a timeout waiting for an
+element that was never going to be there) looks like an app bug or a
+timing issue, not a URL-resolution one.
+
+**Prompt block (for the test config, not the Mentor prompt):**
+
+```
+Normalizar baseURL para sempre terminar com "/" antes de usar em
+`use.baseURL`, independente de como a variável de ambiente que o define
+foi escrita:
+  const rawBaseURL = process.env.MY_BASE_URL || 'http://localhost:8080';
+  const baseURL = rawBaseURL.endsWith('/') ? rawBaseURL : rawBaseURL + '/';
+Isso garante que qualquer `page.goto('AlgumCaminho')` relativo resolve
+corretamente contra o sub-path do app, não contra a raiz do domínio.
+```
+
+**Verify:** with the fix in place, `page.goto('AnyScreenName')` should
+print (via `page.url()` after navigation) a URL that still contains the
+app's sub-path — not just the bare domain.
+
+---
+
+## Recipe: `browser.newContext()` inside a Playwright project with `storageState` configured inherits it by default
+
+**When to use:** any test that needs a genuinely anonymous/unauthenticated
+browser context, written inside a Playwright project whose `use.storageState`
+points at a saved authenticated session.
+
+**The trap this avoids:** `browser.newContext()` called with no arguments
+does not produce a blank context — it inherits the project's own `use`
+options, including `storageState`, because those options are the
+project-level defaults for any context the `browser` fixture creates,
+not just the default `page` fixture's own context. A test meant to prove
+"this screen requires login" or "this behavior differs with no session"
+can pass a fully authenticated context to itself and never notice,
+because the resulting page renders successfully — just under the wrong
+identity, contradicting the test's own name and assertions in a way that
+isn't obvious from the passing/failing status alone.
+
+**Prompt block (for the test file, not the Mentor prompt):**
+
+```
+Sempre que um teste precisar de uma sessão genuinamente anônima dentro
+de um projeto que já define storageState, passar
+`browser.newContext({ storageState: undefined })` explicitamente — nunca
+assumir que `browser.newContext()` sem argumentos produz uma sessão em
+branco quando o projeto já tem storageState configurado.
+```
+
+**Verify:** inside such a context, read something that only an
+authenticated session would show (e.g. the logged-in user's name in a
+sidebar widget) — it must be genuinely absent, not just untested.
 
 ---
 
