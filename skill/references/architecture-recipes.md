@@ -88,6 +88,57 @@ actions, with no separate asset mentioned at all — that is the coupling
 this recipe prevents. Split it out before scoping the wave further, not
 after building it.
 
+## Recipe: test a new agent isolated before integrating it into the calling app
+
+**When to use:** any time a new `AIAgent` asset (or a change to an
+existing one) is being wired into a calling app for the first time — the
+moment a wave's plan is "call the agent, parse its response, write the
+result into the app's own fields."
+
+**The principle:** verify the agent works correctly **on its own**,
+calling its `AgentFlow`/service action directly via the harness with a
+real input, and inspecting its raw output — before writing or debugging
+any code in the calling app that consumes it. Only once the agent's own
+output is confirmed correct should the calling app's integration action
+(parsing, field mapping, persistence) be built or debugged.
+
+**Why this matters:** when a symptom appears after integration (e.g. "the
+suggestion comes back empty" or "the fields are blank"), there are two
+independent places it could originate — the agent's own reasoning/output,
+or the calling app's parsing/mapping of that output — and without an
+isolated test of the agent alone, every debugging turn has to hold both
+hypotheses open at once, doubling the search space. This was the decisive
+move in resolving W20f Bug 3 (`logs/w20f.md`): the calling app's
+`SolicitarSugestaoIA` reported success but wrote empty fields; three
+plausible-sounding Mentor-authored diagnoses were floated for what might
+be wrong in the *app's* logic before anyone confirmed the agent itself
+was fine. Calling the agent's `AgentFlow` directly, in isolation, with a
+real input, and inspecting the raw JSON it returned, immediately proved
+the agent was correct and isolated the bug to one specific place in the
+app's own parsing — collapsing what could have been another multi-turn
+guessing cycle into one direct read.
+
+**How to apply:**
+- Before wiring a new/changed agent into any calling app action, call its
+  own service action (or `AgentFlow` directly, if accessible) via the
+  test harness with a real, representative input. Read the raw output
+  verbatim — don't paraphrase or assume its shape from the spec.
+- Only after that output is confirmed correct, write or debug the calling
+  app's parsing/mapping/persistence logic — and when a symptom appears
+  post-integration, re-run this isolated agent test FIRST, before
+  assuming the bug is in the app's own code. It rules out (or confirms)
+  half the search space in one call.
+- Never invent or assume field names in the calling app's parsing logic
+  from the spec's prose alone — read them from the agent's actual raw
+  output. Passing through field names that sound right but weren't
+  verified against the real response reproduces the same class of bug
+  the isolated test exists to catch.
+
+**Verify:** the agent's isolated raw output, read directly from the
+harness call — not the calling app's summary of what it did with that
+output, and not an assumption about what the agent "should" return based
+on its prompt/spec.
+
 ## When this file isn't enough
 
 This file holds structural/asset-boundary principles, not UI fixes or

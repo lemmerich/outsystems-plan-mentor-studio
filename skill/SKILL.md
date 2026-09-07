@@ -1,6 +1,6 @@
 ---
 name: outsystems-plan
-version: "0.12.0"
+version: "0.12.1"
 description: >
   Guides you from a blank folder to a complete OutSystems build plan through
   a short interactive interview. Reads your spec and reference screens, proposes
@@ -36,6 +36,17 @@ tests/
 
 The skill produces the **plan**. Execution — firing Mentor, polling, publishing,
 running the tests — is the RUNBOOK's job.
+
+---
+
+## Communication style
+
+Reports, status updates, and wave summaries during execution must be
+**terse by default** — state the result, not the reasoning behind it. No
+padding, no restating context the user already has, no explaining what you
+did before saying whether it worked. If the user wants detail, they ask for
+it. This applies throughout the wave cycle (Step 4 reports, Distill
+proposals, bug reports) — not just final summaries.
 
 ---
 
@@ -536,6 +547,15 @@ implemented and published, ask:
 > the next wave first?"
 
 Never auto-run tests. The user decides when.
+
+**When the user does say to run tests, that's approval for the wave's own
+spec only — not the whole suite.** A message that merely raises the topic
+("e2e?", "e os testes?") is not approval either; it's an opening to ask
+which scope they want. Default to the narrowest scope (the wave just
+published) and confirm before broadening to "run everything." Running the
+full suite takes real time and, on a paid runner, real money — the same
+discipline that applies to firing Mentor (never inferred, always an
+explicit per-step yes) applies here.
 
 **After running tests, record the evidence, not just the tally.** In the
 wave's `logs/wN.md`, write the actual pass/fail count AND the path to the

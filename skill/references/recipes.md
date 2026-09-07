@@ -167,6 +167,51 @@ the stated px, not the content area's full width.
 
 ---
 
+## Recipe: two mutually-exclusive show/hide states must be siblings, never one nested inside the other
+
+**When to use:** any "show A when a condition is true, show B when it's
+false" pair — an empty-state placeholder vs. a populated list/table, a
+loading spinner vs. loaded content, an error message vs. a normal form —
+where A and B are meant to be mutually exclusive.
+
+**The trap this avoids:** it's natural to build B first (the table),
+then add A (the empty-state block) as an afterthought placed *inside*
+B's own container instead of promoting both to children of a shared
+parent. The container's `Visible` gets set to the "has data" condition
+(to hide the table when empty) — and because A lives inside that same
+container, A gets hidden right along with it. Result: with zero
+records, NEITHER the table NOR the empty-state message renders —
+nothing at all appears where content used to be. This is easy to miss
+in a quick visual check because an empty screen doesn't look broken the
+way an error would; it just looks like an unusually sparse loading
+state. It surfaced here as a real, previously-shipped screen (a
+Consultas list with an "empty" placeholder from the very first wave)
+that had lost its empty-state block entirely at some undated point
+between waves — no log recorded when or why, and nothing before an E2E
+suite re-flagged it caught the regression, because a visually "blank
+card" reads as plausible at a glance.
+
+**Prompt block:**
+```
+Ao implementar/corrigir um par de estados mutuamente exclusivos
+(vazio vs. populado, carregando vs. carregado, erro vs. normal): os
+dois containers precisam ser IRMÃOS DIRETOS do mesmo elemento pai,
+cada um com sua própria condição de Visible independente e
+complementar (ex.: `List.Empty` / `not List.Empty`) — nunca um
+aninhado dentro do outro. Depois de implementar, peça para o Mentor
+confirmar explicitamente qual é o pai de cada um dos dois containers
+antes de publicar.
+```
+
+**Verify:** inspect the live DOM (not just a screenshot) in BOTH
+states — zero records and populated — and confirm that in each state
+exactly one of the two blocks renders, never zero and never both. A
+screenshot showing "nothing" in the empty state can look identical to
+a correctly-rendered blank list at a glance; only reading the actual
+element tree reveals whether the empty-state block exists at all.
+
+---
+
 ## Recipe: two sibling elements that must share an exact left edge (including button bars)
 
 **When to use:** a title and a subtitle/count stacked directly below each
@@ -685,6 +730,29 @@ any conclusion about whether a bug is fixed — a suite that behaves
 differently on clean data than it did before the wipe is strong evidence
 the earlier failures were data-shaped, not code-shaped.
 
+**A wipe alone doesn't fix it if the suite mixes seed-mutating and
+seed-assuming specs in one pass.** Wiping transactional data and
+reseeding reference data (e.g. via the reset recipe above) fixes the
+*starting* state, but some specs (typically ones matching the "never
+hardcode an identifier from mutable seed data" recipe below — item
+inactivation, "add item", new-version-publish waves) permanently mutate
+that same seed as a side effect of running, not just of failing. Run the
+full suite as one pass and a seed-mutating spec that happens to execute
+*before* an unrelated seed-assuming spec (alphabetical/declared file
+order, single worker, no parallelism needed to trigger this) leaves that
+later spec looking at a corrupted seed it never touched — different
+failures than either "dirty data" or "real regression," and confusing
+because the wipe+reseed you just ran make it look like the environment
+was clean going in. Confirmed directly: `w15`/`w16` (both permanently
+inactivate/edit `Ficha` items) run ahead of `w7`/`w8`/`w9`/`w10`/`w11`/
+`w17`/`w18` in one full-suite pass corrupted the shared `Ficha` those
+later specs assume is stable, producing item-not-found failures with no
+product code involved. **Segregate the run into two passes**: (1) specs
+that permanently mutate shared seed data, (2) everything else that only
+reads/depends on that seed being in its original shape — reseed between
+the two passes, and never interleave them in one `npm test` invocation
+when investigating whether a failure is a real regression.
+
 ---
 
 ## Recipe: entity with two redundant "active/status" fields — keep every writer in sync
@@ -1063,6 +1131,87 @@ snapshot shows the expected content rendering correctly, suspect a
 regenerated id before suspecting a product regression — inspect the live
 DOM for the element's *current* id/class rather than trusting the
 selector was ever guaranteed to stay put.
+
+---
+
+## Recipe: a row locator built on `hasText` breaks the moment that field becomes an `<input>` in edit mode
+
+**When to use:** any Playwright locator that finds a table row (or other
+repeated element) by filtering on visible text of a field — e.g.
+`page.locator('tr').filter({ hasText: codigo })` — where that same field
+is editable in some screen state.
+
+**The trap this avoids:** `hasText`/`textContent`/`innerText` all read
+rendered text nodes — none of them see the `value` of an `<input>`. A
+locator written and passing against the read-only listing (the code is
+plain text in a `<td>`) silently stops matching the instant the screen
+enters edit mode and that same column becomes `<input value="...">`,
+because the row's text content no longer contains the code at all. This
+produces a `Test timeout ... waiting for locator` failure deep inside
+edit-mode steps (filling a sibling field, clicking a sibling button) with
+no error anywhere in the app — it looks like the edit-mode UI broke, when
+the row-finding locator itself is the actual problem.
+
+**Fix — match either text or input value:**
+```ts
+const itemRow = (page: Page, codigo: string) =>
+  page
+    .locator('tr')
+    .filter({ hasText: codigo })
+    .or(page.locator('tr').filter({ has: page.locator(`input[value="${codigo}"]`) }));
+```
+
+**Verify:** exercise the same locator helper in BOTH the read-only
+listing and the edit-mode view within one test run — a locator that only
+gets tested against one of the two states won't reveal this until the
+other state's spec is written or the screen's edit affordance changes.
+
+---
+
+## Recipe: resolving which record to use among several possible candidates (cascading fallback)
+
+**When to use:** any server action that needs to pick one record among
+several possible sources, in priority order — e.g. "use the version
+linked to X if it exists, else the one linked to Y, else the currently
+active one." Any time the natural language describing the logic uses
+"else"/"senão"/"fallback" for picking between database candidates.
+
+**The trap this avoids:** a single aggregate with an `OR`-combined filter
+across all priority levels does not behave like sequential `if`/`elseif`
+— it is one predicate evaluated per row. If the highest-priority level's
+own condition is true but its target doesn't actually exist (an orphaned
+FK), the whole query returns zero rows for that record instead of
+falling through to the next level. Separately, a last-resort "pick any
+matching row" step with `MaxRecords=1` and no `ORDER BY` is
+non-deterministic the instant more than one row can legitimately match
+— which is easy to miss when the data model actually allows several
+simultaneous matches by design (e.g. one active row per parent, several
+parents). See `backend-and-data-gotchas.md` #8 for the full incident.
+
+**Prompt block:**
+
+```
+Implemente a resolução de "<candidato>" como níveis SEQUENCIAIS e
+INDEPENDENTES, nunca como um único aggregate com filtro OR combinando
+os níveis:
+
+Nível 1: buscar "<origem 1>" pelo Id gravado em "<campo>". Só aceitar
+se o registro realmente existir (Count > 0) — não apenas se o campo
+não for nulo.
+Nível 2 (só se nível 1 não encontrou): buscar "<origem 2>" da mesma
+forma, com a mesma verificação de existência.
+Nível 3 (só se nível 1 e 2 falharam): buscar "<critério de último
+recurso>" (ex.: Ativa = True) com ORDER BY explícito e determinístico
+(ex.: <campo relevante não vazio> desc, Id desc) — NUNCA MaxRecords=1
+sem ORDER BY quando mais de um registro pode satisfazer esse critério
+simultaneamente.
+```
+
+**Verify after publish:** test all three scenarios, not just the
+happy path — (1) o Id de nível 1 aponta para um registro que não existe
+mais (órfão); (2) mais de um registro satisfaz o critério de nível 3 ao
+mesmo tempo, com conteúdos diferentes — confirmar que o registro
+CORRETO (não apenas "algum") é o retornado.
 
 ---
 
