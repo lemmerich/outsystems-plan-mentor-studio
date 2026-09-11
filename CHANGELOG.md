@@ -8,12 +8,103 @@ and this project uses semantic versioning with a fork suffix:
 
 ---
 
+## [0.12.1-ms.3] — 2026-09-11
+
+### Changed
+- **Full English translation of `recipes.md`**: every remaining Portuguese
+  "prompt block" (the copy-paste text meant to go straight into a Mentor
+  Studio prompt) is now in English — roughly 45 recipes' worth of example
+  prompts, previously left in PT-BR as a known gap in ms.2. Also fixed a
+  few leftover MCP-channel references (`exec_in_app`, `javascript_exec`)
+  that had slipped through the v0.12.1 rebase, replaced with their manual
+  ODC Studio equivalents.
+- Fixed remaining Portuguese scattered across `mentor-studio-prompt.md`
+  (an example action name, an operator-note label, a CSS class example),
+  `prototype-to-widgets.md`, and `backend-and-data-gotchas.md` (leftover
+  client-specific attribute/status names in prose examples), plus one
+  historical `CHANGELOG.md` entry.
+- The skill's own content — every doc, instruction, and example meant to
+  be committed — is now consistently English. This is separate from a
+  project's own generated prompts, which follow whatever target language
+  that project's operator sets (Step 1, "Target language").
+
+---
+
+---
+
+## [0.12.1-ms.2] — 2026-09-11
+
+### Added
+- `templates/fix-prompt.md`: template for reconcile-fix and ad-hoc prompts
+  (`Target module:` header, single fenced `prompt` block, no nested fences),
+  mirroring `templates/wave-prompt.md`.
+- `templates/PROJECT-README.md` + SKILL.md Step 7: a per-project README
+  generated once at plan creation, orienting anyone new to the project or
+  the skill (what RUNBOOK.md is for, the folder map, what not to do).
+- New onboarding question ("Target language") in Step 1: each project
+  states the language for generated prompts/UI text/error messages
+  explicitly; default is English when the operator has no preference.
+
+### Changed
+- **Prompt naming, tightened**: `fix` is now the only suffix `prompts/`
+  ever uses for wave-tied reconcile rounds (no `diag`/`debug`/bare names);
+  added `extra-P.md` / `extra-P-fixM.md` for prompts not tied to any wave.
+- **Self-contained prompts, made explicit**: SKILL.md's Reconcile step now
+  states directly that a prompt must never reference a prior fix file or a
+  spec by name — Mentor Studio has no memory of earlier sessions and never
+  reads project files itself.
+- **`specs/` folder**: `spec-wN.md` now lives under `specs/`, mirroring
+  `prompts/`, instead of at the project root. Updated throughout SKILL.md,
+  RUNBOOK.md, README.md, and `references/prototype-to-widgets.md`.
+- **Genericized skill content**: swept `skill/` and top-level docs/templates
+  for client-specific project names, entity/attribute names, and business
+  terminology; replaced with generic framing and placeholder entity names.
+  Client-specific content belongs only under a project's own folder now.
+- **English as the skill's default**: fixed remaining Portuguese in the
+  skill's own instructional text (field labels, example strings, prose).
+  PT-BR prompt-example bodies in `recipes.md`/`mentor-studio-prompt.md`
+  were intentionally left untranslated — a separate, larger pass.
+
+See [`DELTA.md`](DELTA.md) §12 for the full rationale.
+
+---
+
+## [0.12.1-ms.1] — 2026-09-10
+
+### Added
+Rebase onto upstream v0.12.1 (commit `9a7cc1c`), four minor releases ahead
+of this fork's previous base (a1ef0f4, v0.8.0):
+- New "Communication style" section in SKILL.md (terse-by-default reports)
+- New **Distill** step 7 in the wave execution cycle (propose new lessons/
+  recipes at wave close, wait for go-ahead before editing reference files)
+- Rule to check `recipes.md`/`prototype-to-widgets.md`/
+  `backend-and-data-gotchas.md` before any live bug investigation, not
+  just wave planning
+- Check against new `skill/references/architecture-recipes.md` before
+  scoping any wave that calls an AI/LLM model
+- Test-run-scope rule: running tests approves that wave only, never the
+  whole suite, without explicit broadening
+- New file `skill/references/backend-and-data-gotchas.md` (Server Action/
+  entity/aggregate lessons), adapted to remove `context_actions`/
+  `context_search`/legacy-MCP-tool references
+- New file `skill/references/architecture-recipes.md` (agent-coupling and
+  isolated-testing principles), adapted to remove `app_revisions`/test-
+  harness references in favor of ODC Studio's own module history and a
+  temporary debug screen
+- 4 new recipes merged into `recipes.md`, 5 new lessons merged into
+  `prototype-to-widgets.md`, all adapted to remove MCP-specific
+  verification calls in favor of their manual ODC Studio equivalents
+
+See [`DELTA.md`](DELTA.md) §11 for the full file-by-file breakdown.
+
+---
+
 ## [0.8.0-ms.12] — 2026-09-04
 
 ### Added
 9 new recipes and 1 gotcha in `recipes.md`/`mentor-studio-prompt.md`,
 distilled from waves W10-W13 (login/roles, drill-down, and the
-métricas-restantes wave):
+remaining-metrics wave):
 
 1. **Zero-valued average rendered as "—"**: a display condition that
    decides absence-of-data by checking whether the RESULT is `> 0`
@@ -96,8 +187,8 @@ métricas-restantes wave):
   3. **Dropdown/select missing a join to the entity that holds the
      display name**: a query built against the child/versioned entity
      alone renders a literal Id or generic placeholder instead of the
-     parent's real name — hit 3 times in one project (Ficha picker,
-     Protocolo picker, a DevTools debug picker) before generalizing it.
+     parent's real name — hit 3 times in one project (Checklist picker,
+     Protocol picker, a DevTools debug picker) before generalizing it.
   4. **Success message shown without confirming the write's effect**:
      unconditionally showing "Salvo com sucesso" after a create/update
      node degrades into the same silent-failure shape as no error
@@ -283,7 +374,7 @@ métricas-restantes wave):
   reporting it as a bug.
 
 - Four new `prototype-to-widgets.md` entries (#31–#34) from this fork's
-  own W1 wave (Onni AI PoC): a "duplicate this record" action (Versionar)
+  own W1 wave: a "duplicate this record" action (Versionar)
   can echo copied fields in the client without ever persisting them
   server-side — verify by navigating away and back, not by reading
   `.value` right after the action fires; a form field can look blank
@@ -306,7 +397,7 @@ métricas-restantes wave):
 
 ### Notes
 - Adaptations specific to this fork (Mentor Studio manual-paste workflow,
-  `Módulo alvo:` multi-artifact sections, the async-agent-call guardrail,
+  `Target module:` multi-artifact sections, the async-agent-call guardrail,
   Portuguese wave-log conventions) are unchanged by this sync — only
   upstream's general OutSystems/Mentor lessons were pulled forward, and
   only where they didn't conflict with this fork's own adaptations.
@@ -322,15 +413,15 @@ métricas-restantes wave):
   fixed up front, before any wave starts. Recorded in RUNBOOK.md as its own
   section (never a wave — it produces nothing clickable, so it gets no wave
   number and no row in the wave table).
-- **`Módulo alvo:` sections**: a single wave can now span more than one ODC
+- **`Target module:` sections**: a single wave can now span more than one ODC
   artifact (e.g. a screen that calls an agent) without breaking the
   one-testable-outcome-per-wave rule. `prompts/wN.md` gets one fenced prompt
-  per artifact touched, each under its own `## Módulo alvo: <ArtifactName>`
+  per artifact touched, each under its own `## Target module: <ArtifactName>`
   heading, pasted into that artifact's own Mentor Studio session.
 - **Guardrail 11 (async agent calls)**: any communication with an Agent
   Workbench agent MUST go through the ODC event mechanism (publish/subscribe)
   — never a synchronous call blocking the UI on the agent's response.
-- **Guardrail 12 (module routing)**: paste each `Módulo alvo:` section into
+- **Guardrail 12 (module routing)**: paste each `Target module:` section into
   that artifact's own session — never mix web-app and Agentic App content.
 - **W0 gets a real Mentor Studio prompt, not just AppGen**: alongside the base
   theme/shell, W0 now always builds a permanent **"Tema & Identidade Visual"**
@@ -343,7 +434,7 @@ métricas-restantes wave):
   self-contained fenced code block — guardrails, context, objective, changes,
   markup and expected result all inline, in the established anatomy order.
   Everything else (rationale, dependency order, post-paste checks) is prose
-  *outside* the fence, always marked `> **Nota do operador (não copiar):**`.
+  *outside* the fence, always marked `> **Operator note (do not copy):**`.
   This replaces the earlier pattern of a shared guardrails block the operator
   had to mentally merge with a per-module block further down.
 
@@ -366,17 +457,17 @@ métricas-restantes wave):
 - **Mentor Studio channel (Emit + Paste)**: Skill now emits `prompts/wN.md` for humans
   to paste into ODC Studio's assistant, instead of firing turns via MCP
 - **Static gate + manual reconcile**: Gate is now a manual read of the module tree;
-  two reconcile rounds per wave (unbounded for `fidelidade: demo` screens)
+  two reconcile rounds per wave (unbounded for `fidelity: demo` screens)
 - **HTML + CSS in prompts**: Pruned markup and styling of each screen goes verbatim
   into prompts, replacing screenshot + prose descriptions
 - **Context pack per wave**: Prompts contain only modules, entities, screens and
   actions that matter for this wave (auto-generated, never versioned)
 - **PoC-specific workflow**: New Step 0 (SPEC-REVIEW.md), classification as PoC or
-  final app, fidelidade budgeting, and PoC-specific handover checklist
-- **Wave `canal` field**: `appgen`, `mentor-studio`, or `manual` — only mentor-studio
+  final app, fidelity budgeting, and PoC-specific handover checklist
+- **Wave `channel` field**: `appgen`, `mentor-studio`, or `manual` — only mentor-studio
   waves generate prompts
-- **Wave `fidelidade` field**: `demo` (on the demo script, unlimited reconcile) or
-  `secundária` (two rounds, then accept and log diffs)
+- **Wave `fidelity` field**: `demo` (on the demo script, unlimited reconcile) or
+  `secondary` (two rounds, then accept and log diffs)
 - **Guardrails 8-10**: Added three new guardrails specific to the Mentor Studio channel
 - **Playwright improvements**: New `auth.setup.ts` for persistent login, HTML reporter,
   split `demo.spec.ts` from wave specs, `.env.example` with APP_USER/APP_PASSWORD

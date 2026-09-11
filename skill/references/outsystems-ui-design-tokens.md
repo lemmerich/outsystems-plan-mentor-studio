@@ -58,8 +58,8 @@ Pattern: `--color-<hue>-<shade>`, `.background-<hue>-<shade>`, `.text-<hue>-<sha
 Example: `--color-teal`, `--color-teal-darker`, `.background-teal-light`.
 
 **Before reaching for a raw hex value anywhere in a prompt, check whether one
-of these 12 hues × 7 shades already matches.** It very often does — ONNI's
-brand teal, for instance, sits almost exactly on `teal`/`teal-dark`.
+of these 12 hues × 7 shades already matches.** It very often does — a
+client's brand teal, for instance, can sit almost exactly on `teal`/`teal-dark`.
 
 ### Neutral ramp (grayscale — surfaces, borders, text)
 
@@ -237,8 +237,8 @@ Table, TextArea, Upload.
 
 **Mapping tip specific to this project's recurring shapes:** a list screen
 that opens a detail view on row click is `List`/`Table` + navigation, not a
-custom pattern — do not invent one. A version-history sidebar (Ficha,
-Protocolo, Resultado in this project) is `Sidebar` or `SectionIndex` +
+custom pattern — do not invent one. A version-history sidebar (Checklist,
+Protocol, Resultado in this project) is `Sidebar` or `SectionIndex` +
 `ListItemContent` rows, not a bespoke `<div>` grid. An "item card with 3
 subsections and a divider" (the Resultado screen's per-item card) is `Card`
 + `Section`/`SectionGroup` for the internal dividers, not a generic
@@ -286,11 +286,11 @@ Responsive: `.tablet-full-width`, `.phone-full-width`.
   value. Only keep a raw hex if truly nothing in Section 1 is close — note
   that explicitly as a deliberate exception.
 - **W0 (theme wave):** the theme table in the wave spec lists *which
-  platform token each brand color overrides* (`--color-primary` = ONNI
-  teal, `--color-error` replaces the default red, etc.) — not a
-  from-scratch variable list. The Tema & Identidade Visual screen (see
-  SKILL.md's W0 section) swatches these same token names, not invented
-  ones, so it doubles as documentation of the actual overrides.
+  platform token each brand color overrides* (`--color-primary` = the
+  client's brand teal, `--color-error` replaces the default red, etc.) —
+  not a from-scratch variable list. The Theme screen (see SKILL.md's W0
+  section) swatches these same token names, not invented ones, so it
+  doubles as documentation of the actual overrides.
 - **Every wave spec's Screen layout section:** name the Section 6 pattern
   a prototype element maps to. If nothing matches, say so explicitly —
   that is a signal the prototype invented a pattern Mentor cannot build

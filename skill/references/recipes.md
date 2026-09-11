@@ -7,12 +7,14 @@ description: >
   per-row list controls (selection + persistence + bulk save), reserved
   theme class names, MasterDetail, icon+label link wrapping, appearance
   resets, external fonts, and more. Read this BEFORE writing a Mentor
-  prompt whenever the wave's scope matches one of these patterns — each
+  prompt whenever the wave's scope matches one of these patterns, AND
+  before investigating any live bug from scratch — most recipes here came
+  from debugging an already-built app, not from wave planning. Each
   recipe already encodes the two-part fix that a natural-language
   description of the same pattern tends to drop, so the prompt doesn't
-  rediscover it turn by turn. Companion to `prototype-to-widgets.md`
-  (which explains *why* each gap happens) — this file is *what to say* to
-  avoid it happening at all.
+  rediscover it turn by turn. Companion to `prototype-to-widgets.md` and
+  `backend-and-data-gotchas.md` (which explain *why* each gap happens) —
+  this file is *what to say* to avoid it happening at all.
 ---
 
 # OutSystems recipes: prompt text that avoids known failure modes
@@ -39,18 +41,18 @@ is no method for it. See `prototype-to-widgets.md` #11 for the full story.
 **Prompt block:**
 
 ```
-Dropdown "<Label>" (fonte: <Entity>) — precisa de uma opção "<Todos/All
-label>" representando "sem filtro". O widget Dropdown do OutSystems não
-tem propriedade Prompt — implemente em duas partes, ambas obrigatórias:
-1. Insira um registro sintético (Id = NullIdentifier(), Label =
-   "<Todos/All label>") no início da lista do aggregate, via uma ação
-   wired ao OnAfterFetch do aggregate.
-2. Remova a propriedade EmptyValue do widget Dropdown. Sem isso, o
-   registro sintético e a opção nativa vazia aparecem AMBOS, duplicados
-   (um "0" ao lado de "<Todos/All label>").
-Quando nada estiver selecionado, o valor da variável de filtro deve ser
-NullIdentifier() e o aggregate correspondente não deve filtrar por essa
-coluna.
+Dropdown "<Label>" (source: <Entity>) — needs an "<All label>" option
+representing "no filter". The OutSystems Dropdown widget has no Prompt
+property — implement this in two mandatory parts:
+1. Insert a synthetic record (Id = NullIdentifier(), Label =
+   "<All label>") at the start of the aggregate's list, via an action
+   wired to the aggregate's OnAfterFetch.
+2. Remove the Dropdown widget's EmptyValue property. Without this, the
+   synthetic record and the native empty option BOTH appear, duplicated
+   (a "0" next to "<All label>").
+When nothing is selected, the filter variable's value must be
+NullIdentifier() and the corresponding aggregate must not filter by that
+column.
 ```
 
 **Verify after publish:** read `[...select.options].map(o => o.text)` in
@@ -77,31 +79,31 @@ the actual root cause, not a symptom.
 **Prompt block:**
 
 ```
-"<Form name>" deve abrir como MODAL (overlay + card centralizado), não
-como bloco embutido na página. Estrutura exigida — construa exatamente
-assim, não incrementalmente:
+"<Form name>" must open as a MODAL (overlay + centered card), not
+as a block embedded in the page. Required structure — build it exactly
+like this, not incrementally:
 
-1. UM wrapper overlay (`position: fixed; inset: 0; background: rgba(...);
+1. ONE overlay wrapper (`position: fixed; inset: 0; background: rgba(...);
    display: flex; align-items: center; justify-content: center; z-index:
-   1000`) — este é o fundo escuro, nada mais.
-2. Dentro dele, UM ÚNICO card wrapper (`width: <Npx> fixo; max-width:
+   1000`) — this is the dark backdrop, nothing else.
+2. Inside it, ONE SINGLE card wrapper (`width: <Npx> fixed; max-width:
    92vw; max-height: 85vh; overflow-y: auto; background: white;
    border-radius: 12px; box-shadow: ...; padding: ...; display: flex;
-   flex-direction: column; gap: ...`) contendo TODOS os campos e os
-   botões de ação dentro dele — nunca estilize os campos individualmente
-   como se cada um fosse seu próprio card.
-3. Antes de aplicar: verifique se o widget que vira este card (Container/
-   FormCard) tem uma propriedade `Width` configurada como "(fill
-   parent)"/preenchida — se tiver, LIMPE essa propriedade. Ela é a causa
-   raiz mais provável de o runtime do OutSystems injetar um style inline
-   com `top`/`height` fixos (refletindo a posição antiga do elemento
-   quando ele vivia no fluxo normal da página), que silenciosamente vence
-   qualquer CSS de classe sem `!important`.
-4. Como reforço (não substitui o passo 3): declare `top`, `left`,
-   `transform`, `height` e `max-height` do card com `!important`.
-5. Visível/oculto controlado pela mesma variável booleana que o widget já
-   usa hoje (não recriar o mecanismo de show/hide) — só a ancoragem
-   visual muda de "embutido" pra "modal".
+   flex-direction: column; gap: ...`) containing ALL the fields and the
+   action buttons inside it — never style the fields individually as if
+   each one were its own card.
+3. Before applying: check whether the widget that becomes this card
+   (Container/FormCard) has a `Width` property set to "(fill
+   parent)"/filled — if so, CLEAR that property. It is the most likely
+   root cause of OutSystems' runtime injecting an inline style with
+   fixed `top`/`height` (reflecting the element's old position when it
+   lived in the page's normal flow), which silently beats any
+   class-based CSS without `!important`.
+4. As reinforcement (does not replace step 3): declare `top`, `left`,
+   `transform`, `height` and `max-height` on the card with `!important`.
+5. Visible/hidden controlled by the same boolean variable the widget
+   already uses today (don't recreate the show/hide mechanism) — only
+   the visual anchoring changes from "inline" to "modal".
 ```
 
 **Verify after publish (all three, not just a screenshot):**
@@ -130,10 +132,10 @@ next to the title, not under it.
 **Prompt block:**
 
 ```
-O título "<X>" e a linha "<Y>" abaixo dele (ex.: contagem de registros)
-ficam AMBOS dentro do placeholder Title do LayoutSideMenu, empilhados como
-blocos — nunca colocar a segunda linha no placeholder Header, que é uma
-região separada do topo e renderiza ao lado, não abaixo.
+The title "<X>" and the line "<Y>" below it (e.g. a record count)
+BOTH go inside the LayoutSideMenu Title placeholder, stacked as
+blocks — never put the second line in the Header placeholder, which is a
+separate region at the top and renders beside it, not below.
 ```
 
 ---
@@ -153,15 +155,59 @@ in a `Container` and put the constraint there instead.
 **Prompt block:**
 
 ```
-O container "<X>" tem max-width: <N>px fixo — NÃO deve esticar até a
-largura total da área de conteúdo, que é maior. <Se for um bloco
-Columns2-6: aplicar a largura/max-width num Container que envolve o
-bloco, não no próprio bloco de colunas — Columns2-6 descarta Width/Style
-definidos na própria instância.>
+The container "<X>" has a fixed max-width: <N>px — it must NOT stretch to
+the content area's full width, which is larger. <If this is a
+Columns2-6 block: apply the width/max-width on a Container wrapping the
+block, not on the columns block itself — Columns2-6 discards Width/Style
+set on its own instance.>
 ```
 
 **Verify after publish:** `getBoundingClientRect(el).width` must equal
 the stated px, not the content area's full width.
+
+---
+
+## Recipe: two mutually-exclusive show/hide states must be siblings, never one nested inside the other
+
+**When to use:** any "show A when a condition is true, show B when it's
+false" pair — an empty-state placeholder vs. a populated list/table, a
+loading spinner vs. loaded content, an error message vs. a normal form —
+where A and B are meant to be mutually exclusive.
+
+**The trap this avoids:** it's natural to build B first (the table),
+then add A (the empty-state block) as an afterthought placed *inside*
+B's own container instead of promoting both to children of a shared
+parent. The container's `Visible` gets set to the "has data" condition
+(to hide the table when empty) — and because A lives inside that same
+container, A gets hidden right along with it. Result: with zero
+records, NEITHER the table NOR the empty-state message renders —
+nothing at all appears where content used to be. This is easy to miss
+in a quick visual check because an empty screen doesn't look broken the
+way an error would; it just looks like an unusually sparse loading
+state. It surfaced here as a real, previously-shipped screen (a
+SourceRecords list with an "empty" placeholder from the very first wave)
+that had lost its empty-state block entirely at some undated point
+between waves — no log recorded when or why, and nothing before an E2E
+suite re-flagged it caught the regression, because a visually "blank
+card" reads as plausible at a glance.
+
+**Prompt block:**
+```
+When implementing/fixing a pair of mutually exclusive states
+(empty vs. populated, loading vs. loaded, error vs. normal): the
+two containers must be DIRECT SIBLINGS of the same parent element,
+each with its own independent, complementary Visible condition
+(e.g. `List.Empty` / `not List.Empty`) — never one nested inside
+the other. After implementing, ask Mentor to explicitly confirm
+which parent each of the two containers has before publishing.
+```
+
+**Verify:** inspect the live DOM (not just a screenshot) in BOTH
+states — zero records and populated — and confirm that in each state
+exactly one of the two blocks renders, never zero and never both. A
+screenshot showing "nothing" in the empty state can look identical to
+a correctly-rendered blank list at a glance; only reading the actual
+element tree reveals whether the empty-state block exists at all.
 
 ---
 
@@ -193,23 +239,23 @@ touched the widget-level margin at all.
 **Prompt block — prefer the THEME-level fix over per-widget zeroing:**
 
 ```
-"<A>" e "<B>" compartilham exatamente a mesma margem esquerda — zere
-MarginLeft explicitamente nos dois (não confiar no valor default
-Adaptive, que insere margem automática).
+"<A>" and "<B>" share exactly the same left margin — zero out
+MarginLeft explicitly on both (don't rely on the default Adaptive
+value, which inserts an automatic margin).
 
-Para uma barra de botões dentro de um container flex com `gap` já
-declarado (ex.: `.form-actions`, `.modal-actions`): NÃO zerar o
-MarginLeft botão por botão nem tela por tela — declarar uma regra a
-nível de TEMA que cobre a classe do container inteiro, de uma vez, para
-toda tela atual e futura que a reutilizar:
+For a button bar inside a flex container that already declares a
+`gap` (e.g. `.form-actions`, `.modal-actions`): do NOT zero
+MarginLeft button by button or screen by screen — declare a
+THEME-level rule that covers the whole container class at once, for
+every current and future screen that reuses it:
 
 .form-actions > * {
   margin-left: 0 !important;
 }
 
-Fazer isso na definição do tema, nunca em CSS de tela — repetir o fix
-por tela é exatamente o que permite ele "voltar" na próxima wave que usa
-a mesma classe.
+Do this in the theme definition, never in screen-level CSS — repeating
+the fix per screen is exactly what lets it "come back" on the next
+wave that uses the same class.
 ```
 
 **Verify after publish:** measure the actual pixel gap, not just confirm
@@ -235,10 +281,10 @@ the exact text length triggers it at capture time.
 **Prompt block:**
 
 ```
-O texto "<X>" fica num container com min-width: 0 explícito dentro da
-linha flex — precisa poder encolher abaixo da largura natural do
-conteúdo; não deve forçar a linha a ficar mais larga que o espaço
-disponível.
+The text "<X>" sits in a container with an explicit min-width: 0
+inside the flex row — it must be able to shrink below its content's
+natural width; it must not force the row to become wider than the
+available space.
 ```
 
 ---
@@ -256,9 +302,9 @@ change described as if it were one.
 **Prompt block:**
 
 ```
-Declare a variável/classe <X> no tema E aplique-a explicitamente na
-propriedade Style/ExtendedClass do(s) widget(s) <lista> — declarar no
-tema sozinho não muda a aparência de nenhuma instância.
+Declare the variable/class <X> in the theme AND apply it explicitly
+on the Style/ExtendedClass property of the <list> widget(s) — declaring
+it in the theme alone changes no instance's appearance.
 ```
 
 Prefer overriding a canonical OutSystems UI variable
@@ -282,10 +328,10 @@ rules for these five exact names, and both rules apply at once (e.g. a
 **Prompt block:**
 
 ```
-Usar classes prefixadas com o namespace do app (ex.: .app-sidebar,
-.app-header) — nunca .sidebar/.header/.content/.footer/.main-content sem
-prefixo, essas colidem com regras já existentes no tema LayoutBlank da
-OutSystems UI.
+Use classes prefixed with the app's own namespace (e.g. .app-sidebar,
+.app-header) — never bare .sidebar/.header/.content/.footer/.main-content,
+these collide with rules already defined in OutSystems UI's LayoutBlank
+theme.
 ```
 
 ---
@@ -303,10 +349,10 @@ already handles the responsive case.
 **Prompt block:**
 
 ```
-Antes de implementar navegação custom para "<lista> → <detalhe>",
-verifique se o bloco MasterDetail do OutSystems UI já cobre esse
-comportamento (list/detail lado a lado no desktop, drill-down no celular,
-botão voltar nativo) antes de construir do zero.
+Before implementing custom navigation for "<list> → <detail>",
+check whether OutSystems UI's MasterDetail block already covers this
+behavior (side-by-side list/detail on desktop, drill-down on mobile,
+native back button) before building it from scratch.
 ```
 
 ---
@@ -327,11 +373,11 @@ children) and they silently stack vertically instead of sitting inline.
 **Prompt block:**
 
 ```
-"<Ícone> + <label>" deve ficar DENTRO da tag <a>/<button> como conteúdo
-filho direto — não meramente ao lado dela. Depois de mover os dois pra
-dentro do novo wrapper, reaplique display:flex; align-items:center; gap
-no PRÓPRIO wrapper (a regra flex do pai antigo não passa a valer para o
-novo elemento automaticamente).
+"<Icon> + <label>" must sit INSIDE the <a>/<button> tag as direct
+child content — not merely next to it. After moving both inside the new
+wrapper, reapply display:flex; align-items:center; gap on the wrapper
+ITSELF (the old parent's flex rule does not automatically carry over to
+the new element).
 ```
 
 **Verify after publish:** `anchorEl.textContent.trim()` must be non-empty
@@ -354,11 +400,11 @@ exactly one direct child (that wrapper).
 **Prompt block:**
 
 ```
-Para exibir as opções de "<RadioGroup>" lado a lado: aplicar
-display:flex num seletor filho direto UM NÍVEL ABAIXO da classe do
-próprio grupo (ex.: .my-radio-group > div), não na classe do grupo
-diretamente — o RadioButtonGroup do OutSystems tem um wrapper interno
-próprio entre a classe visível e as opções.
+To display "<RadioGroup>"'s options side by side: apply
+display:flex on a direct-child selector ONE LEVEL BELOW the group's own
+class (e.g. .my-radio-group > div), not on the group's class directly —
+OutSystems' RadioButtonGroup has its own internal wrapper between the
+visible class and the options.
 ```
 
 ---
@@ -376,10 +422,10 @@ DOM, functionally clickable via `.click()`, but invisible.
 **Prompt block:**
 
 ```
-Ao restaurar a aparência nativa de um radio/checkbox depois de um reset
-appearance:none no tema: aplicar appearance:auto (ou revert) E um
-width/height numérico explícito (ex.: 16px) na MESMA regra — nunca só
-um dos dois.
+When restoring a radio/checkbox's native appearance after an
+appearance:none reset in the theme: apply appearance:auto (or revert)
+AND an explicit numeric width/height (e.g. 16px) in the SAME rule —
+never just one of the two.
 ```
 
 **Verify after publish:** `getComputedStyle(el).width`/`height` must be
@@ -402,10 +448,10 @@ in isolation.
 **Prompt block:**
 
 ```
-Cada linha de "<lista>" tem seleção independente — vincular o controle
-a um atributo calculado POR LINHA no próprio aggregate/records da lista
-(List.Current.<Atributo>), nunca a uma variável de tela única
-compartilhada entre todas as linhas.
+Each row of "<list>" has independent selection — bind the control
+to an attribute computed PER ROW on the list's own aggregate/records
+(List.Current.<Attribute>), never to a single screen variable shared
+across every row.
 ```
 
 **Verify after publish (mandatory two-row test):** click row A, then row
@@ -430,12 +476,12 @@ visible error.
 **Prompt block:**
 
 ```
-O OnChange de "<controle>" chama a ação de persistência passando o
-identificador e o novo valor da linha como PARÂMETROS EXPLÍCITOS,
-avaliados diretamente nas expressões de parâmetro do próprio OnChange
-(ex.: GetItems.List.Current.Id, GetItems.List.Current.Valor) — a ação
-invocada NÃO deve ler .List.Current internamente, pois não é garantido
-apontar pra linha certa nesse ponto.
+The "<control>"'s OnChange calls the persistence action passing the
+row's identifier and new value as EXPLICIT PARAMETERS, evaluated
+directly in the OnChange's own parameter expressions (e.g.
+GetItems.List.Current.Id, GetItems.List.Current.Value) — the invoked
+action must NOT read .List.Current internally, since it is not
+guaranteed to point at the right row at that point.
 ```
 
 **Verify after publish:** click and reload at least two non-adjacent rows
@@ -478,16 +524,16 @@ action for each row" is exactly the request that produces this.
 **Prompt block:**
 
 ```
-"<Botão>" salva todos os itens de uma vez: monte a lista completa de
-valores CLIENT-SIDE (ex.: ListAppend, acumulando cada linha numa Local
-Variable de Record List), depois chame UMA ÚNICA server action passando
-essa lista inteira — a nova server action itera SERVER-SIDE (seu próprio
-ForEach) sobre a lista recebida. Nunca implementar como uma chamada de
-server action por linha dentro de um ForEach client-side — essas chamadas
-são descartadas silenciosamente pelo OutSystems.
+"<Button>" saves all items at once: build the complete list of values
+CLIENT-SIDE (e.g. ListAppend, accumulating each row into a Local
+Variable of Record List), then call a SINGLE server action passing that
+whole list — the new server action iterates SERVER-SIDE (its own
+ForEach) over the received list. Never implement this as one server
+action call per row inside a client-side ForEach — those calls are
+silently dropped by OutSystems.
 ```
 
-**Verify after publish:** check `app_traces`/server logs show exactly one
+**Verify after publish:** check ODC Studio's server logs show exactly one
 call to the new action, with N items in its payload — not N calls, not
 zero calls with a toast that still appears.
 
@@ -508,12 +554,12 @@ Playwright auto-scrolls to elements regardless of whether they're stuck.
 **Prompt block:**
 
 ```
-"<Elemento>" fica sticky (position: sticky; bottom/top: 0) ao rolar
-"<lista/container>". A cadeia de containers entre o elemento sticky e o
-container de scroll da página não pode ter overflow diferente de visible
-em NENHUM nível — se algum container intermediário precisa de overflow
-por outro motivo, mova o elemento sticky pra fora dele (ex.: como filho
-direto do shell da página, position:fixed em vez de sticky).
+"<Element>" is sticky (position: sticky; bottom/top: 0) while
+scrolling "<list/container>". The chain of containers between the
+sticky element and the page's scroll container must not have overflow
+other than visible at ANY level — if some intermediate container needs
+overflow for another reason, move the sticky element outside it (e.g.
+as a direct child of the page shell, position:fixed instead of sticky).
 ```
 
 **Verify after publish:** scroll past the element's natural document
@@ -537,12 +583,12 @@ the *file* loaded.
 **Prompt block:**
 
 ```
-Para carregar a fonte "<Nome>" do Google Fonts: NÃO usar @import no CSS
-do tema (é descartado silenciosamente pelo bundler do OutSystems). Usar
-um widget AdvancedHtml com Tag="link" (rel="stylesheet",
-href="https://fonts.googleapis.com/...") colocado no conteúdo da tela (ou
-num bloco de layout compartilhado) — o OutSystems eleva tags
-link/meta/script do conteúdo da tela pro <head> real do documento.
+To load the "<Name>" font from Google Fonts: do NOT use @import in
+the theme's CSS (it is silently dropped by OutSystems' bundler). Use an
+AdvancedHtml widget with Tag="link" (rel="stylesheet",
+href="https://fonts.googleapis.com/...") placed in the screen's content
+(or in a shared layout block) — OutSystems hoists link/meta/script tags
+from screen content into the document's real <head>.
 ```
 
 **Verify after publish:** `[...document.fonts].some(f => f.family ===
@@ -563,44 +609,45 @@ client action passes `GetAggregate.List` directly to the server action, and
 the `fill()` triggered an aggregate refresh before `SalvarEdicao` ran,
 the list is mid-fetch (empty) when the server action is called. The server
 action creates 0 records, the toast still appears, and all subsequent flows
-that depend on those records silently break (e.g., `OpenAuditoria` finds 0
-ItemFicha → creates 0 Respostas → item cards never appear in the audit screen).
-This was discovered in W15: `PublishFichaVersao` accepted an empty
-`ItensFicha` list from Playwright tests, creating FichaVersao records with
-0 ItemFicha, breaking W5/W7/W8/W9/W10/W11 thereafter.
+that depend on those records silently break (e.g., `OpenAuditCase` finds 0
+ChecklistItem → creates 0 Answers → item cards never appear in the audit screen).
+This was discovered in W15: `PublishChecklistVersion` accepted an empty
+`ChecklistItems` list from Playwright tests, creating ChecklistVersion records with
+0 ChecklistItem, breaking W5/W7/W8/W9/W10/W11 thereafter.
 
 **The two-part fix (both are mandatory):**
 
 **Part A — Server-side guard (prevents corruption):**
 ```
-No início de "<ServerAction>", adicionar guarda obrigatória:
-- Se ListLength(<ListInput>) = 0 → atribuir ErrorMessage =
-  "A lista de itens não pode estar vazia." e terminar (End node)
-  SEM criar nenhum registro. A guarda deve ser o PRIMEIRO nó de lógica,
-  antes de qualquer CreateOrUpdate.
+At the start of "<ServerAction>", add a mandatory guard:
+- If ListLength(<ListInput>) = 0 → set ErrorMessage =
+  "The item list cannot be empty." and terminate (End node)
+  WITHOUT creating any record. The guard must be the FIRST logic node,
+  before any CreateOrUpdate.
 ```
 
 **Part B — E2E test pattern (prevents false-pass):**
 ```
-Após qualquer locator.fill() em inputs dentro de uma lista reativa do
-OutSystems, aguardar a tabela ter o número esperado de linhas ANTES de
-clicar o botão de salvar — garante que o aggregate terminou de refreshar:
+After any locator.fill() on inputs inside an OutSystems reactive
+list, wait for the table to have the expected row count BEFORE
+clicking the save button — this guarantees the aggregate finished
+refreshing:
   await expect(page.locator('tbody tr')).toHaveCount(N, { timeout: 10000 });
   await saveButton.click();
-Sem essa espera, Playwright clica Salvar enquanto o aggregate está
-a meio do refresh (lista vazia), e o server action cria 0 registros.
+Without this wait, Playwright clicks Save while the aggregate is
+mid-refresh (empty list), and the server action creates 0 records.
 ```
 
 **Verify after publish:**
-- Call the server action explicitly with an empty list via `exec_in_app` or
-  a browser DevTools console call — it must return `ErrorMessage` non-empty
-  and create 0 records.
+- Call the server action explicitly with an empty list via a temporary
+  debug screen/button in ODC Studio, or a browser DevTools console call —
+  it must return `ErrorMessage` non-empty and create 0 records.
 - In the E2E test: after `fill()` + `toHaveCount(N)` + save, verify the
   server log shows exactly N items in the payload (not 0).
 
 ---
 
-## Recipe: restoring seed data after test pollution (FichaVersao)
+## Recipe: restoring seed data after test pollution (ChecklistVersion)
 
 **When to use:** whenever E2E tests created corrupt records (e.g., versions
 with 0 items) that break other tests, and you need to restore the app to a
@@ -613,62 +660,137 @@ pick a bad one if the seed version was also overwritten.
 
 **Prompt block:**
 ```
-Criar server action "<ResetEntityToSeed>" (sem inputs; Output: ErrorMessage
-Text) com a seguinte lógica:
-1. Buscar todos os registros de "<VersaoEntity>" relacionados a "<SeedId>"
-   (ex.: FichaId = 1), ordenados por NumeroVersao ASC.
-2. Encontrar o PRIMEIRO (menor NumeroVersao) que tenha pelo menos 1 registro
-   filho associado (aggregate com JOIN ou Count > 0).
-3. Marcar esse registro como Ativa = True; fazer CreateOrUpdate.
-4. Para TODOS os outros registros da mesma entidade pai, marcar Ativa = False
-   e fazer CreateOrUpdate em cada um.
-5. Se nenhum registro tiver filhos, OutputErrorMessage =
-   "Nenhuma versão válida encontrada." sem alterar nada.
-A action deve ser exposta via Expose REST (ou mantida como server action
-pública) para que possa ser chamada via exec_in_app nos testes.
+Create a server action "<ResetEntityToSeed>" (no inputs; Output: ErrorMessage
+Text) with the following logic:
+1. Fetch all records of "<VersionEntity>" related to "<SeedId>"
+   (e.g. ChecklistId = 1), ordered by VersionNumber ASC.
+2. Find the FIRST one (lowest VersionNumber) that has at least 1 associated
+   child record (aggregate with JOIN or Count > 0).
+3. Mark that record as IsActive = True; CreateOrUpdate.
+4. For ALL other records of the same parent entity, mark IsActive = False
+   and CreateOrUpdate each one.
+5. If no record has children, OutputErrorMessage =
+   "No valid version found." without changing anything.
+The action must be exposed via Expose REST (or kept as a public server
+action) so it can be called from a temporary debug screen/button in
+ODC Studio during test setup.
 ```
 
-**Verify:** after calling the reset action, `GetVersaoAtiva` for SeedId must
-return exactly 1 record with `Ativa = True` and `Count(filhos) > 0`.
+**Verify:** after calling the reset action, `GetActiveVersion` for SeedId must
+return exactly 1 record with `IsActive = True` and `Count(children) > 0`.
+
+---
+
+## Recipe: wipe and recreate ALL test data periodically, not just when something is already broken
+
+**When to use:** as a standing practice once a project has any destructive
+or state-mutating test wave (item inactivation, version publishing, status
+transitions) — not only as an emergency recovery step. This is broader
+than the single-entity reset recipe above: that one repairs *one* entity's
+active-version pointer; this one clears every transactional record the
+E2E suite creates (SourceRecords, AuditCases, Answers, Documentos, or your
+project's equivalents), leaving reference/seed data (Checklists, Protocols)
+untouched.
+
+**The trap this avoids:** transactional test data accumulates silently
+across every session — dozens of half-finished records, records created
+by a debugging session before a fix landed, records left behind by a test
+run that crashed partway through. Two costs compound over time: (1) a
+live bug investigation cannot easily tell "is this failing because of a
+real code bug, or because the data underneath it is already corrupt from
+an earlier session" — the two look identical from the UI, and untangling
+them by inspection burns far more time than a wipe would; (2) as
+functionality evolves, records created under an OLD data shape or an OLD
+business rule linger and quietly violate assumptions a NEW flow makes,
+producing bugs that have nothing to do with the new code itself.
+
+**Prompt block:**
+```
+Create a server action "WipeAllTestData" (no inputs; Outputs:
+<Entity1>Deleted, <Entity2>Deleted, ... Long Integer, ErrorMessage
+Text) that deletes, cascading in the correct dependency order (children
+before parents), ALL records of <list of transactional entities>. Do NOT
+delete <list of reference/seed entities: Checklist, ChecklistVersion,
+ChecklistItem, Protocol, ...>. Count each entity before deleting and
+return the count in each output. Expose it via a red/destructive button
+in a "Dev"/"Utilities" area (see the lesson on permanent maintenance
+tooling), with copy making clear the action is irreversible.
+```
+
+**When to actually run it:** (a) whenever a bug's symptoms are ambiguous
+between "code regression" and "corrupt data from a prior session" — run
+it and re-test on a clean slate before spending another investigation
+round on the code; (b) periodically as a project matures, not only when
+something is visibly broken — treat it the same way you'd treat clearing
+a build cache, a routine reset rather than a rescue operation.
+
+**Verify:** after wiping, re-run the full E2E suite once with a fresh
+seed (see the reset recipe above, if the project has one) before drawing
+any conclusion about whether a bug is fixed — a suite that behaves
+differently on clean data than it did before the wipe is strong evidence
+the earlier failures were data-shaped, not code-shaped.
+
+**A wipe alone doesn't fix it if the suite mixes seed-mutating and
+seed-assuming specs in one pass.** Wiping transactional data and
+reseeding reference data (e.g. via the reset recipe above) fixes the
+*starting* state, but some specs (typically ones matching the "never
+hardcode an identifier from mutable seed data" recipe below — item
+inactivation, "add item", new-version-publish waves) permanently mutate
+that same seed as a side effect of running, not just of failing. Run the
+full suite as one pass and a seed-mutating spec that happens to execute
+*before* an unrelated seed-assuming spec (alphabetical/declared file
+order, single worker, no parallelism needed to trigger this) leaves that
+later spec looking at a corrupted seed it never touched — different
+failures than either "dirty data" or "real regression," and confusing
+because the wipe+reseed you just ran make it look like the environment
+was clean going in. Confirmed directly: `w15`/`w16` (both permanently
+inactivate/edit `Checklist` items) run ahead of `w7`/`w8`/`w9`/`w10`/`w11`/
+`w17`/`w18` in one full-suite pass corrupted the shared `Checklist` those
+later specs assume is stable, producing item-not-found failures with no
+product code involved. **Segregate the run into two passes**: (1) specs
+that permanently mutate shared seed data, (2) everything else that only
+reads/depends on that seed being in its original shape — reseed between
+the two passes, and never interleave them in one `npm test` invocation
+when investigating whether a failure is a real regression.
 
 ---
 
 ## Recipe: entity with two redundant "active/status" fields — keep every writer in sync
 
 **When to use:** any entity that represents versioning/activation state with
-BOTH a Boolean flag (e.g., `Ativa`) AND a static-entity `Status` reference
-(e.g., `StatusFichaVersao`: Rascunho/Inativa/Ativa) — common when a later
+BOTH a Boolean flag (e.g., `IsActive`) AND a static-entity `Status` reference
+(e.g., `ChecklistVersionStatus`: Draft/Inactive/Active) — common when a later
 wave adds a boolean shortcut alongside a status field an earlier wave
 already established, or vice-versa.
 
 **The trap this avoids:** a NEW server action (built in a later wave) reads
 the spec literally and sets only the field the spec's prose emphasizes
-(e.g., "Ativa = True"), while an EXISTING server action from an earlier
-wave (e.g., `OpenAuditoria`) filters by the OTHER field (`Status =
-Entities.StatusFichaVersao.Ativa`). Both actions publish cleanly with 0
+(e.g., "IsActive = True"), while an EXISTING server action from an earlier
+wave (e.g., `OpenAuditCase`) filters by the OTHER field (`Status =
+Entities.ChecklistVersionStatus.Active`). Both actions publish cleanly with 0
 validation errors — there is no compile-time link between the two fields,
 so nothing catches the mismatch. The new action's own screen/tests can
 pass completely (they only read the boolean), while every OTHER flow that
 depends on the entity's active record silently breaks — with a real error
 message it own screen never surfaces on. This was discovered in W15:
-`PublishFichaVersao` set `Ativa = True` but left `Status` null/stale;
-`OpenAuditoria` (built in an earlier wave) filtered by `Status`, so every
+`PublishChecklistVersion` set `IsActive = True` but left `Status` null/stale;
+`OpenAuditCase` (built in an earlier wave) filtered by `Status`, so every
 version created by the edit flow was invisible to it — blocking every
-downstream wave that opens an auditoria (W7 through W18) with no failure
+downstream wave that opens an audit case (W7 through W18) with no failure
 visible in W15's own tests.
 
 **Prompt block (BEFORE writing an action that activates/deactivates a
 versioned entity):**
 ```
-Antes de implementar "<ServerAction>", verificar TODOS os campos que
-"<Entidade>" usa para indicar estado ativo/versão corrente — não assumir
-que existe um único campo. Se houver mais de um (ex.: um Boolean E um
-Status de entidade estática), a ação deve escrever AMBOS sempre que
-ativar ou desativar um registro, no mesmo Assign, nunca só um. Além
-disso, localizar toda outra server action existente no módulo que já lê
-esse estado (grep por "Ativa" e por "Status" nas actions do módulo) e
-confirmar qual campo ela usa — replicar exatamente esse campo, não o que
-a spec da wave atual menciona primeiro.
+Before implementing "<ServerAction>", check EVERY field "<Entity>"
+uses to indicate active/current-version state — don't assume there is a
+single field. If there is more than one (e.g. a Boolean AND a static-
+entity Status), the action must write BOTH whenever it activates or
+deactivates a record, in the same Assign, never just one. Also locate
+every other existing server action in the module that already reads
+that state (grep for "IsActive" and for "Status" across the module's
+actions) and confirm which field it uses — replicate exactly that field,
+not whichever the current wave's spec mentions first.
 ```
 
 **Verify after publish:** don't just test the NEW screen/flow in
@@ -705,15 +827,14 @@ zero product-code changes.
 
 **Prompt block (for the TEST file, not the Mentor prompt):**
 ```
-Nunca hardcodar um código/identificador específico de uma entidade seed
-que outra wave pode editar ou inativar permanentemente. No início do
-teste, ler dinamicamente o alvo (ex.: `page.locator('tbody tr').first()
-.locator('td').nth(N)`) em vez de assumir que um código conhecido
-('registro_completo', etc.) ainda existe ou ainda está na mesma posição.
-Da mesma forma, nunca assumir uma contagem absoluta de linhas
-(`toHaveCount(10)`) se alguma wave no plano pode reduzir essa contagem
-permanentemente — comparar contra uma contagem capturada NO INÍCIO do
-próprio teste, não um literal.
+Never hardcode a specific code/identifier from a seed entity that
+another wave may permanently edit or inactivate. At the start of the
+test, read the target dynamically (e.g. `page.locator('tbody tr').first()
+.locator('td').nth(N)`) instead of assuming a known code
+('complete_record', etc.) still exists or is still in the same position.
+Likewise, never assume an absolute row count (`toHaveCount(10)`) if some
+wave in the plan can permanently reduce that count — compare against a
+count captured at the START of the test itself, not a literal.
 ```
 
 **Verify:** run the full suite (not just the new wave's specs) at least
@@ -725,36 +846,37 @@ passes once and fails on rerun is hiding exactly this trap.
 ## Recipe: OutSystems entity attribute name may differ from its UI label
 
 **When to use:** reconstructing or seeding entity records directly via a
-server action call (e.g., through a test harness / `exec_in_app`),
-without going through the built screen.
+temporary debug server action/button, without going through the built
+screen.
 
-**The trap this avoids:** a table column labeled "Peso" in the UI does
-not guarantee the underlying entity attribute is named `Peso` — it may
-be `PesoMaximo`, `PesoValor`, etc., set as the widget's `Label` property
+**The trap this avoids:** a table column labeled "Weight" in the UI does
+not guarantee the underlying entity attribute is named `Weight` — it may
+be `MaxWeight`, `WeightValue`, etc., set as the widget's `Label` property
 independently of the bound attribute name. Passing a JSON key that
 matches the UI label but not the real attribute name is silently
 accepted by a JSON→Record mapping (unknown keys are ignored) — the
 record is created successfully with that field left at its default
 (often `0`/null), with no error anywhere. This was hit while manually
-reconstructing depleted `ItemFicha` test data: passing `"Peso": 2`
-created records with `PesoMaximo` silently left at 0, because the real
-attribute is `PesoMaximo` — the UI column is just labeled "Peso".
+reconstructing depleted `ChecklistItem` test data: passing `"Weight": 2`
+created records with `MaxWeight` silently left at 0, because the real
+attribute is `MaxWeight` — the UI column is just labeled "Weight".
 
-**Prompt block / procedure:**
+**Procedure (no MCP harness in this channel — do this in ODC Studio):**
 ```
-Antes de montar um payload JSON pra uma server action que cria/edita
-registros de "<Entidade>" fora da tela normal (via harness/exec_in_app),
-confirmar os nomes REAIS dos atributos via context_entities — nunca
-assumir que o texto do cabeçalho de coluna na UI é o nome do atributo.
-Depois de criar os registros, ler de volta pelo menos um campo cujo
-nome era incerto e confirmar visualmente na tela que o valor batyeu —
-não confiar apenas no `status: "ok"` da chamada.
+Before building a payload to reconstruct "<Entity>" records outside
+the normal screen, confirm the REAL attribute names by opening the
+entity's Data tab in ODC Studio — never assume the UI's column header
+text is the attribute name. After creating/editing the records (via a
+temporary debug button, if there's no dedicated screen — see
+`prototype-to-widgets.md` #25), read back at least one field whose name
+was uncertain and visually confirm on screen that the value matches —
+don't rely solely on Mentor Studio saying it applied.
 ```
 
-**Verify:** after any harness-driven record creation, reload the actual
-screen and visually/DOM-check every field that was populated from a
-guessed attribute name — a `0`/empty value where a specific number was
-expected is the signature of this trap, and the call itself reports
+**Verify:** after any debug-action-driven record creation, reload the
+actual screen and visually/DOM-check every field that was populated from
+a guessed attribute name — a `0`/empty value where a specific number was
+expected is the signature of this trap, and the action itself reports
 success either way.
 
 ---
@@ -792,7 +914,7 @@ one.
 a fix's measured result doesn't match what was requested):**
 
 ```javascript
-// Run in the browser console / via javascript_exec against the LIVE element,
+// Run in the browser console against the LIVE element,
 // not the prototype. Replace the id with the actual target.
 const el = document.getElementById('<TargetElementId>');
 let matches = [];
@@ -824,15 +946,14 @@ Specifically look for:
 **Prompt block (include the dump's findings directly in the Mentor
 prompt, don't just describe the symptom):**
 ```
-Antes de aplicar qualquer CSS, foram identificadas TODAS as regras que
-já casam com "<seletor/elemento alvo>" (via dump de document.styleSheets
-— colar a lista aqui). A regra "<seletor legado>" usa !important e
-sempre vencerá uma regra nova sem !important, independente de
-especificidade ou ordem. Fix necessário: (a) remover a(s) regra(s)
-legada(s) listada(s) acima se estiverem obsoletas (não mais referenciadas
-por nenhuma classe semântica atual), ou (b) se ainda forem necessárias,
-adicionar !important explicitamente na regra nova. Não adicionar uma
-terceira regra empilhada sobre as duas existentes.
+Before applying any CSS, ALL rules that already match "<target
+selector/element>" were identified (via a document.styleSheets dump —
+paste the list here). The rule "<legacy selector>" uses !important and
+will always beat a new rule without !important, regardless of
+specificity or order. Fix needed: (a) remove the legacy rule(s) listed
+above if they're obsolete (no longer referenced by any current semantic
+class), or (b) if still needed, explicitly add !important to the new
+rule. Do not add a third rule stacked on top of the existing two.
 ```
 
 **Verify after publish:** re-run the same dump — the count of rules
@@ -866,12 +987,12 @@ earlier.
 the "real" fix, whenever a known stopgap already exists on the same
 element):**
 ```
-Esta correção substitui um workaround temporário anterior ("<descrever
-a regra/técnica antiga>", aplicado na wave <X>). Remover EXPLICITAMENTE
-o workaround antigo como parte deste mesmo turno — não deixar as duas
-versões coexistindo no CSS. Se o workaround antigo tiver múltiplos
-blocos/seletores relacionados, remover todos, não só o que causa o
-conflito mais óbvio.
+This fix replaces an earlier temporary workaround ("<describe the
+old rule/technique>", applied in wave <X>). EXPLICITLY remove the old
+workaround as part of this same turn — don't leave both versions
+coexisting in the CSS. If the old workaround has multiple related
+blocks/selectors, remove all of them, not just the one causing the most
+obvious conflict.
 ```
 
 **Verify:** the rule-dump procedure above, run once right after this
@@ -891,7 +1012,7 @@ child records).
 **every field** of the new records to its type's default (empty text, `0`,
 `false`), not just the fields the mapping happened to omit. This produced
 silently corrupted data for weeks in this project: a "clone items into a new
-version" flow wrote every text field of `ItemFicha` as `""` except the couple
+version" flow wrote every text field of `ChecklistItem` as `""` except the couple
 of fields a different part of the UI happened to also display (which gave
 false confidence the mapping worked) — with 0 validation errors, because
 nothing about an empty string is invalid. The real damage (a `RadioButtonGroup`
@@ -901,12 +1022,12 @@ much later.
 **Prompt block:**
 
 ```
-No `mapTo` que converte "<lista de origem>" para o tipo de entidade
-"<Entidade>", listar EXPLICITAMENTE todos os campos de "<Entidade>" no
-mapeamento — inclusive os que a lógica atual "não parece tocar". Um `mapTo`
-com mapeamento vazio ou parcial não gera erro de validação nenhum; ele
-simplesmente grava valor padrão (texto vazio/0/false) em todo campo não
-mapeado, silenciosamente.
+In the `mapTo` that converts "<source list>" to the "<Entity>" entity
+type, EXPLICITLY list every "<Entity>" field in the mapping — including
+ones the current logic "doesn't seem to touch." An empty or partial
+`mapTo` mapping produces no validation error at all; it simply writes
+the default value (empty text/0/false) to every unmapped field,
+silently.
 ```
 
 **Verify after publish:** read back a freshly created/cloned record's fields
@@ -936,11 +1057,11 @@ rows. The network call still reports `200 OK`; there is no error anywhere.
 **Prompt block:**
 
 ```
-"<AggregateB>" filtra por "<AggregateA>.List.Current.<campo>" — não confiar
-em ordem de execução implícita entre dois aggregates AtStart. Configurar
-"<AggregateB>" como Fetch: OnDemand e disparar seu refresh explicitamente a
-partir do OnAfterFetch de "<AggregateA>" — a sequência deve ser garantida
-por wiring explícito, não pela ordem incidental dos nós no flow.
+"<AggregateB>" filters by "<AggregateA>.List.Current.<field>" — don't
+rely on implicit execution order between two AtStart aggregates. Set
+"<AggregateB>" to Fetch: OnDemand and trigger its refresh explicitly
+from "<AggregateA>"'s OnAfterFetch — the sequence must be guaranteed by
+explicit wiring, not by the incidental order of nodes in the flow.
 ```
 
 **Verify after any edit touching either aggregate** (even an edit that seems
@@ -969,14 +1090,14 @@ is purely a test-selector fragility.
 **Prompt block / procedure:**
 
 ```
-Nunca usar um id gerado pela plataforma (ex.: #FilenameDisplay,
-#ChipNameP) como seletor de teste E2E — não é estável entre publishes,
-mesmo os que não tocam a tela em questão. Preferir, nesta ordem: (1) um
-atributo `data-test` explícito no widget (adicionar um se não existir —
-custo mínimo, sem efeito visual); (2) uma classe CSS aplicada
-deliberadamente no código-fonte (não gerada automaticamente); (3) role +
-texto acessível. Só usar um id literal como último recurso, e documentar
-no comentário do seletor que ele é uma aposta frágil sujeita a quebrar.
+Never use a platform-generated id (e.g. #FilenameDisplay,
+#ChipNameP) as an E2E test selector — it is not stable across publishes,
+even ones that don't touch the screen in question. Prefer, in this
+order: (1) an explicit `data-test` attribute on the widget (add one if
+missing — minimal cost, no visual effect); (2) a CSS class applied
+deliberately in the source (not auto-generated); (3) role + accessible
+text. Only use a literal id as a last resort, and document in the
+selector's comment that it's a fragile bet liable to break.
 ```
 
 **Verify:** if a previously-passing test starts failing with "element not
@@ -1009,15 +1130,15 @@ the original test width. See `prototype-to-widgets.md` #33.
 **Prompt block (append to any prompt editing these containers):**
 
 ```
-Depois de aplicar esse fix, teste em DUAS larguras antes de publicar como
-concluído: desktop (>= 1280px) e tablet/mobile (~768px ou menos).
-Confirme explicitamente que:
-1. Em desktop: a sidebar renderiza normalmente, expandida e fixa; o menu
-   off-canvas (drawer) e seu botão de hambúrguer permanecem ocultos.
-2. Em tablet/mobile: a sidebar fixa desaparece; o botão de hambúrguer
-   aparece e é clicável; clicar nele abre o drawer com todos os itens de
-   menu; fechar o drawer restaura a tela normal.
-Não declare o fix concluído até confirmar os dois casos.
+After applying this fix, test at TWO widths before declaring it
+done: desktop (>= 1280px) and tablet/mobile (~768px or less). Explicitly
+confirm that:
+1. On desktop: the sidebar renders normally, expanded and fixed; the
+   off-canvas menu (drawer) and its hamburger button stay hidden.
+2. On tablet/mobile: the fixed sidebar disappears; the hamburger button
+   appears and is clickable; clicking it opens the drawer with every
+   menu item; closing the drawer restores the normal screen.
+Don't declare the fix done until both cases are confirmed.
 ```
 
 **Post-publish verification (browser console, run at both widths):**
@@ -1039,10 +1160,10 @@ shell's other half — not evidence the original fix needs to be stronger.
 
 ---
 
-## Recipe: an edit-toggle (Editar/Salvar/Cancelar) that must REPLACE the view, not append the form beside it
+## Recipe: an edit-toggle (Edit/Save/Cancel) that must REPLACE the view, not append the form beside it
 
 **When to use:** any time a card/row has both a read-only view and an edit
-form triggered by the same "Editar" action.
+form triggered by the same "Edit" action.
 
 **The trap this avoids:** the edit action inserts the form as additional
 content instead of swapping it in — every field shown in both states
@@ -1053,12 +1174,11 @@ open. See `prototype-to-widgets.md` #35.
 **Prompt block:**
 
 ```
-Ao clicar em "Editar" neste card/linha, o conteúdo de visualização
-(cabeçalho, badges, textos estáticos) deve ser INTEIRAMENTE SUBSTITUÍDO
-pelo formulário de edição — não deve haver nenhum elemento de
-visualização ainda visível ao mesmo tempo que o formulário. Ao Salvar
-ou Cancelar, o formulário é substituído de volta pela visualização
-atualizada (ou original, no caso de Cancelar).
+When clicking "Edit" on this card/row, the view-mode content
+(header, badges, static text) must be ENTIRELY REPLACED by the edit
+form — no view-mode element should still be visible at the same time as
+the form. On Save or Cancel, the form is replaced back by the updated
+view (or the original, in the Cancel case).
 ```
 
 **Post-publish verification (browser console, right after clicking "Editar"):**
@@ -1092,16 +1212,16 @@ satisfy a loose text filter and hide the bug further. See
 **Prompt block:**
 
 ```
-O atributo data-test="<nome>" deve estar em CADA item individual da
-lista/tabela (um por linha/card), não no container que os envolve.
-Depois de aplicar, confirme que o número de elementos com esse
-data-test é igual ao número de itens renderizados, não 1.
+The data-test="<name>" attribute must be on EACH individual item of
+the list/table (one per row/card), not on the container wrapping them.
+After applying, confirm the number of elements with that data-test
+equals the number of rendered items, not 1.
 ```
 
 **Post-publish verification (browser console):**
 
 ```js
-const items = document.querySelectorAll('[data-test="<nome>"]');
+const items = document.querySelectorAll('[data-test="<name>"]');
 JSON.stringify({ count: items.length, firstItemText: items[0] && items[0].textContent });
 ```
 `count` should equal the expected number of rows/cards. If it's 1 and
@@ -1143,14 +1263,14 @@ original 5 records) but silently never reaches the 6th.
 **Prompt block:**
 
 ```
-"<SeedAction>" precisa continuar idempotente ao adicionar o registro
-"<NovoRegistro>" a um lote que já existia. NÃO usar um guard de nível
-lote ("se o primeiro registro já existe, termina tudo") — isso bloqueia
-qualquer registro adicionado depois que os originais já foram semeados.
-Cada registro do lote (incluindo os que já existiam antes desta wave)
-deve ser checado e inserido INDIVIDUALMENTE por sua chave natural (ex.:
-Identificador) — sem nenhum "return antecipado" de nível tabela que pule
-os que ainda não foram checados.
+"<SeedAction>" must stay idempotent when adding the record
+"<NewRecord>" to a batch that already existed. Do NOT use a batch-level
+guard ("if the first record already exists, stop everything") — that
+blocks any record added after the originals have already been seeded.
+Each record in the batch (including ones that already existed before
+this wave) must be checked and inserted INDIVIDUALLY by its natural key
+(e.g. an identifier) — with no batch-level "early return" that skips
+ones not yet checked.
 ```
 
 **Verify after publish:** run the seed action a second time on a database
@@ -1180,13 +1300,13 @@ click-through behavior on every row.
 **Prompt block:**
 
 ```
-Em "<Lista>", a classe/estilo que indica linha clicável já está
-condicionada corretamente a "<condição>" — mas isso é uma propriedade
-visual separada do comportamento de clique/navegação em si. Localize
-ONDE o clique/navegação da linha está de fato ligado (evento da linha
-inteira, ou de cada célula individualmente) e envolva-o na MESMA
-condição "<condição>" — não assuma que corrigir o estilo também corrige
-o comportamento; são dois bindings diferentes no widget.
+In "<List>", the class/style that indicates a clickable row is
+already correctly conditioned on "<condition>" — but that's a visual
+property separate from the click/navigation behavior itself. Find WHERE
+the row's click/navigation is actually wired (a whole-row event, or
+each cell individually) and wrap it in the SAME "<condition>" — don't
+assume fixing the style also fixes the behavior; they're two different
+bindings on the widget.
 ```
 
 **Verify after publish:** don't just inspect the CSS class name applied
@@ -1223,20 +1343,20 @@ compile and run without ever joining the RELATED entity that holds the
 human-readable name — the dropdown then falls back to showing the
 record's own literal Id, a hardcoded static string, or a generic
 placeholder like "Item #N" instead of the name a user would recognize.
-This happened three separate times in one project (a Ficha picker, a
-Protocolo picker, and a DevTools debug picker), each time because the
+This happened three separate times in one project (a Checklist picker, a
+Protocol picker, and a DevTools debug picker), each time because the
 query fetched the versioned/child entity alone without joining back to
 its parent for the label.
 
 **Prompt block:**
 
 ```
-O dropdown "<X>" precisa mostrar "<CampoDeExibição>" (da entidade
-"<EntidadePai>"), não apenas o Id ou um rótulo genérico do registro que
-a query já busca ("<EntidadeFilha>"). Junte "<EntidadeFilha>" com
-"<EntidadePai>" na query/aggregate que popula esse dropdown e monte o
-rótulo a partir do campo real (ex.: EntidadePai.Nome + " · v" +
-EntidadeFilha.NumeroVersao), não a partir de um valor fixo ou do Id.
+Dropdown "<X>" needs to show "<DisplayField>" (from the
+"<ParentEntity>"), not just the Id or a generic label from the record
+the query already fetches ("<ChildEntity>"). Join "<ChildEntity>" with
+"<ParentEntity>" in the query/aggregate that populates this dropdown and
+build the label from the real field (e.g. ParentEntity.Name + " · v" +
+ChildEntity.VersionNumber), not from a fixed value or the Id.
 ```
 
 **Verify after publish:** read `[...select.options].map(o => o.text)` in
@@ -1253,7 +1373,7 @@ button, but also any regular save/update flow) that shows a static
 success message after calling a create/update node.
 
 **The trap this avoids:** a flow that calls an update/create node and
-then unconditionally shows "Salvo com sucesso"/"Concluído" regardless of
+then unconditionally shows "Saved successfully"/"Complete" regardless of
 whether that node found/changed anything degrades into the exact same
 failure mode as no error handling at all — except it now actively lies,
 which is worse for debugging than silence, because it stops anyone from
@@ -1265,12 +1385,12 @@ and the success message papers over it completely.
 **Prompt block:**
 
 ```
-Depois de "<AçãoDeEscrita>", não mostrar a mensagem de sucesso
-incondicionalmente. Busque o registro afetado de novo e confirme que o
-campo esperado ("<Campo>") realmente mudou para o valor pretendido antes
-de exibir "<mensagem de sucesso>" — se não mudou, mostre um erro
-específico em vez disso ("Registro não encontrado ou não alterado"),
-nunca a mensagem de sucesso.
+After "<WriteAction>", don't show the success message
+unconditionally. Fetch the affected record again and confirm the
+expected field ("<Field>") actually changed to the intended value before
+displaying "<success message>" — if it didn't change, show a specific
+error instead ("Record not found or not changed"), never the success
+message.
 ```
 
 **Verify after publish:** trigger the action, then independently re-fetch
@@ -1289,8 +1409,8 @@ empty) when there's "no data," computed from an average, sum, or other
 aggregate over a filtered set of records.
 
 **The trap this avoids:** the display condition decides "no data" by
-checking whether the COMPUTED RESULT is truthy/positive (`If(Media > 0,
-Media, "—")`) instead of whether there were any CONTRIBUTING RECORDS at
+checking whether the COMPUTED RESULT is truthy/positive (`If(Average > 0,
+Average, "—")`) instead of whether there were any CONTRIBUTING RECORDS at
 all (`If(Count > 0, Media, "—")`). A result that legitimately averages to
 exactly `0` — e.g. every matching record happens to have a zero-day gap
 between two dates, a 0% rate, a balance of 0 — is then indistinguishable
@@ -1303,12 +1423,12 @@ missing when it is actually the most interesting possible number.
 **Prompt block:**
 
 ```
-A condição de exibição de "<Indicador>" deve decidir "—" com base em
-SE EXISTE PELO MENOS 1 registro contribuindo para o cálculo (a mesma
-contagem que "<IndicadorRelacionadoQueJáContaCorretamente>" já usa),
-nunca com base em se o RESULTADO da média/soma em si é maior que zero.
-Um resultado igual a 0 é um valor real e deve ser exibido normalmente
-quando há registros — "—" é só para quando não há nenhum registro.
+The display condition for "<Indicator>" must decide "—" based on
+WHETHER AT LEAST 1 record contributes to the calculation (the same count
+"<RelatedIndicatorThatAlreadyCountsCorrectly>" already uses), never
+based on whether the average/sum RESULT itself is greater than zero. A
+result equal to 0 is a real value and must display normally when there
+are records — "—" is only for when there are no records at all.
 ```
 
 **Verify after publish:** find or construct a case where every matching
@@ -1342,14 +1462,14 @@ right" isn't the same as "the code produces the right output."
 **Prompt block:**
 
 ```
-Para "<GráficoOuRelatório>", pare de derivar mês/ano de volta a partir
-do valor combinado usado para agrupar. Calcule e carregue Ano e Mês
-como 2 valores inteiros SEPARADOS desde a origem (Year(Data), Month(Data)),
-nunca combinados num único inteiro e depois desmembrados por subtração/
-divisão/multiplicação. Use esses 2 valores separados para montar o
-texto do rótulo (ex.: nome do mês + "/" + ano) e, se for necessário um
-valor único para garantir 1 grupo por período, mantenha-o só como chave
-de agrupamento — nunca como fonte do texto exibido.
+For "<ChartOrReport>", stop deriving month/year back from the
+combined value used for grouping. Compute and carry Year and Month as 2
+SEPARATE integer values from the source (Year(Date), Month(Date)), never
+combined into a single integer and then decomposed via subtraction/
+division/multiplication. Use those 2 separate values to build the
+label text (e.g. month name + "/" + year) and, if a single value is
+still needed to guarantee 1 group per period, keep it only as the
+grouping key — never as the source of the displayed text.
 ```
 
 **Verify after publish:** with at least 2 different periods in the
@@ -1372,21 +1492,20 @@ callers that DO pass a real value — can end up passing an empty string
 explicitly as the parameter instead of omitting it, or the "no filter"
 branch of the OR condition can be written slightly differently from how
 every other working filter on the same aggregate handles it. The
-working cases (a real Status value, a real Classificação value) mask the
+working cases (a real Status value, a real Classification value) mask the
 bug completely, because they never touch the "is this empty" branch at
 all — only the specific "no filter" case reaches it, and it fails
-silently: 0 rows, no error, dropdowns still showing the correct "Todos"/
-"Todas" default.
+silently: 0 rows, no error, dropdowns still showing the correct "All"
+default.
 
 **Prompt block:**
 
 ```
-Confirme que o caminho "sem filtro" de "<Filtro>" realmente cai na
-condição "(Param = "" or Field = Param)" e resulta em TODOS os
-registros — não em zero. Teste explicitamente esse caso (não só os
-casos com um valor real selecionado), comparando com abrir a tela sem
-nenhum parâmetro de URL: os dois precisam mostrar exatamente a mesma
-lista completa.
+Confirm that "<Filter>"'s "no filter" path really does fall into
+the "(Param = "" or Field = Param)" condition and results in ALL
+records — not zero. Explicitly test this case (not just the cases with
+a real value selected), comparing against opening the screen with no
+URL parameter at all: both must show exactly the same complete list.
 ```
 
 **Verify after publish:** open the screen via its "no filter" entry
@@ -1410,7 +1529,7 @@ that used to be the shared entry point for everyone typically stays
 configured as the module's Home screen (served whenever the bare app
 URL is opened with no specific path). A fix aimed at "redirect each role
 to the right screen after login" can correctly patch the login SUCCESS
-action's own navigation — Auditor → Consultas, Administrador → Ficha —
+action's own navigation — Reviewer → SourceRecords, Administrator → Checklist —
 and verifiably work for that one path, while every OTHER way of reaching
 the bare module root (reloading the page, opening a saved bookmark,
 typing the base URL, a link that points at the module root instead of a
@@ -1424,15 +1543,15 @@ user.
 **Prompt block:**
 
 ```
-O redirecionamento por papel foi corrigido só na AÇÃO DE SUCESSO do
-login — mas isso não cobre visitar a raiz do app já autenticado (recarregar
-a página, abrir um favorito, digitar a URL base), que ainda cai direto na
-Home do módulo, sem redirecionamento nenhum. Torne a própria Home do
-módulo consciente do papel — reusando o MESMO mapeamento de papel→tela já
-usado no sucesso do login, não uma segunda lógica separada — ou substitua
-a Home por uma tela leve cujo único trabalho é redirecionar por papel
-antes que a Home antiga (ou qualquer uma delas) rode sua própria checagem
-de acesso.
+Role-based redirection was only fixed in the login SUCCESS ACTION —
+but that doesn't cover visiting the app's root while already
+authenticated (reloading the page, opening a bookmark, typing the base
+URL), which still lands directly on the module's Home screen, with no
+redirection at all. Make the module's own Home screen role-aware —
+reusing the SAME role→screen mapping already used in login success, not
+a second, separate logic path — or replace Home with a lightweight
+screen whose only job is to redirect by role before the old Home (or
+either one) runs its own access check.
 ```
 
 **Verify after publish:** with an already-valid session (don't log in
@@ -1466,13 +1585,14 @@ the test's own fixture assumption was just wrong for this run.
 **Prompt block (for the TEST file, not the Mentor prompt):**
 
 ```
-Antes de clicar para forçar uma mudança, leia qual opção está
-SELECIONADA AGORA (ex.: via classe CSS "selected-*" que o app já usa
-para marcar a atual) e escolha sempre uma opção DIFERENTE dela — nunca
-alternar entre 2 índices fixos, que podem coincidir com o estado já
-salvo de uma execução anterior. Uma forma robusta: escolher o próximo
-índice em sequência a partir do atual (`(atual + 1) % totalDeOpções`),
-garantindo uma mudança real seja qual for o estado de partida.
+Before clicking to force a change, read which option is SELECTED
+RIGHT NOW (e.g. via the "selected-*" CSS class the app already uses to
+mark the current one) and always pick an option DIFFERENT from it —
+never alternate between 2 fixed indices, which may coincide with a
+state already saved from a previous run. A robust approach: pick the
+next index in sequence from the current one (`(current + 1) %
+totalOptions`), guaranteeing a real change regardless of the starting
+state.
 ```
 
 **Verify:** run the test twice in a row without any reset between runs
@@ -1502,13 +1622,13 @@ timing issue, not a URL-resolution one.
 **Prompt block (for the test config, not the Mentor prompt):**
 
 ```
-Normalizar baseURL para sempre terminar com "/" antes de usar em
-`use.baseURL`, independente de como a variável de ambiente que o define
-foi escrita:
+Normalize baseURL to always end with "/" before using it in
+`use.baseURL`, regardless of how the environment variable defining it
+was written:
   const rawBaseURL = process.env.MY_BASE_URL || 'http://localhost:8080';
   const baseURL = rawBaseURL.endsWith('/') ? rawBaseURL : rawBaseURL + '/';
-Isso garante que qualquer `page.goto('AlgumCaminho')` relativo resolve
-corretamente contra o sub-path do app, não contra a raiz do domínio.
+This guarantees that any relative `page.goto('SomePath')` resolves
+correctly against the app's sub-path, not against the domain root.
 ```
 
 **Verify:** with the fix in place, `page.goto('AnyScreenName')` should
@@ -1537,11 +1657,11 @@ isn't obvious from the passing/failing status alone.
 **Prompt block (for the test file, not the Mentor prompt):**
 
 ```
-Sempre que um teste precisar de uma sessão genuinamente anônima dentro
-de um projeto que já define storageState, passar
-`browser.newContext({ storageState: undefined })` explicitamente — nunca
-assumir que `browser.newContext()` sem argumentos produz uma sessão em
-branco quando o projeto já tem storageState configurado.
+Whenever a test needs a genuinely anonymous session inside a project
+that already sets storageState, explicitly pass
+`browser.newContext({ storageState: undefined })` — never assume
+`browser.newContext()` with no arguments produces a blank session when
+the project already has storageState configured.
 ```
 
 **Verify:** inside such a context, read something that only an
@@ -1550,11 +1670,101 @@ sidebar widget) — it must be genuinely absent, not just untested.
 
 ---
 
+## Recipe: a row locator built on `hasText` breaks the moment that field becomes an `<input>` in edit mode
+
+**When to use:** any Playwright locator that finds a table row (or other
+repeated element) by filtering on visible text of a field — e.g.
+`page.locator('tr').filter({ hasText: codigo })` — where that same field
+is editable in some screen state.
+
+**The trap this avoids:** `hasText`/`textContent`/`innerText` all read
+rendered text nodes — none of them see the `value` of an `<input>`. A
+locator written and passing against the read-only listing (the code is
+plain text in a `<td>`) silently stops matching the instant the screen
+enters edit mode and that same column becomes `<input value="...">`,
+because the row's text content no longer contains the code at all. This
+produces a `Test timeout ... waiting for locator` failure deep inside
+edit-mode steps (filling a sibling field, clicking a sibling button) with
+no error anywhere in the app — it looks like the edit-mode UI broke, when
+the row-finding locator itself is the actual problem.
+
+**Fix — match either text or input value:**
+```ts
+const itemRow = (page: Page, codigo: string) =>
+  page
+    .locator('tr')
+    .filter({ hasText: codigo })
+    .or(page.locator('tr').filter({ has: page.locator(`input[value="${codigo}"]`) }));
+```
+
+**Verify:** exercise the same locator helper in BOTH the read-only
+listing and the edit-mode view within one test run — a locator that only
+gets tested against one of the two states won't reveal this until the
+other state's spec is written or the screen's edit affordance changes.
+
+---
+
+## Recipe: resolving which record to use among several possible candidates (cascading fallback)
+
+**When to use:** any server action that needs to pick one record among
+several possible sources, in priority order — e.g. "use the version
+linked to X if it exists, else the one linked to Y, else the currently
+active one." Any time the natural language describing the logic uses
+"else"/"otherwise"/"fallback" for picking between database candidates.
+
+**The trap this avoids:** a single aggregate with an `OR`-combined filter
+across all priority levels does not behave like sequential `if`/`elseif`
+— it is one predicate evaluated per row. If the highest-priority level's
+own condition is true but its target doesn't actually exist (an orphaned
+FK), the whole query returns zero rows for that record instead of
+falling through to the next level. Separately, a last-resort "pick any
+matching row" step with `MaxRecords=1` and no `ORDER BY` is
+non-deterministic the instant more than one row can legitimately match
+— which is easy to miss when the data model actually allows several
+simultaneous matches by design (e.g. one active row per parent, several
+parents). See `backend-and-data-gotchas.md` #8 for the full incident.
+
+**Prompt block:**
+
+```
+Implement "<candidate>" resolution as SEQUENTIAL, INDEPENDENT
+levels, never as a single aggregate with an OR filter combining the
+levels:
+
+Level 1: look up "<source 1>" by the Id stored in "<field>". Only
+accept it if the record actually exists (Count > 0) — not just if the
+field is non-null.
+Level 2 (only if level 1 found nothing): look up "<source 2>" the same
+way, with the same existence check.
+Level 3 (only if levels 1 and 2 both failed): look up "<last-resort
+criterion>" (e.g. IsActive = True) with an explicit, deterministic
+ORDER BY (e.g. <relevant non-empty field> desc, Id desc) — NEVER
+MaxRecords=1 without ORDER BY when more than one record can satisfy
+this criterion at the same time.
+```
+
+**Verify after publish:** test all three scenarios, not just the
+happy path — (1) level 1's Id points at a record that no longer exists
+(orphaned); (2) more than one record satisfies level 3's criterion at
+the same time, with different contents — confirm the CORRECT record
+(not just "some") is the one returned.
+
+---
+
 ## When this file isn't enough
 
-These are the two patterns this project actually hit more than once.
+These are the recurring patterns this project's sessions have actually hit
+more than once — UI/widget patterns above, Server Action and data-layer
+patterns in [`backend-and-data-gotchas.md`](backend-and-data-gotchas.md).
 For any other recurring pattern that costs a multi-turn fix, add a new
-recipe here — a prompt block plus its post-publish verification snippet —
-rather than only writing up what went wrong in `prototype-to-widgets.md`.
-The lesson explains the trap; the recipe is what stops it from
-reoccurring.
+recipe here (or there, if it's backend/data-shaped) — a prompt block plus
+its post-publish verification snippet — rather than only writing up what
+went wrong in the matching lessons file. The lesson explains the trap; the
+recipe is what stops it from reoccurring.
+
+**This file is not only for wave-authoring.** Every recipe here came from
+a real multi-turn fix, most of them found while debugging an already-built
+app, not while planning a new wave. Check here (and in
+`backend-and-data-gotchas.md`) **before investigating any bug from
+scratch** — live debugging, not just "what to say when writing a new
+wave's Mentor prompt."

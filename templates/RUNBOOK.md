@@ -18,7 +18,7 @@
 ## Demo script
 
 The click sequence this PoC exists to support. Verbatim, in order. It sets the
-wave order, decides which screens are `fidelidade: demo`, and is what
+wave order, decides which screens are `fidelity: demo`, and is what
 `tests/demo.spec.ts` replays.
 
 ```
@@ -42,17 +42,23 @@ Resumption pointer. When picking up an interrupted session:
 
 ## Wave plan
 
-| Wave | Name | Canal | Fidelidade | Proves | Status |
+| Wave | Name | Channel | Fidelity | Proves | Status |
 |---|---|---|---|---|---|
 | W0 | App + theme | appgen | — | Shell renders with the project theme | — |
 | W1 | Foundation | mentor-studio | demo | Seed data exists, first screen renders | — |
 | W2 | … | mentor-studio | … | … | — |
 | — | — | — | — | **committed scope ends here** | — |
-| W… | Admin | mentor-studio | secundária | CRUD for reference data | DEFERRED |
+| W… | Admin | mentor-studio | secondary | CRUD for reference data | DEFERRED |
 
 ---
 
 ## Per-wave procedure
+
+For work that doesn't belong to any wave row above (an ad-hoc debugging
+session, a one-off maintenance action), use the same shape with `extra`
+standing in for the wave number: `prompts/extra-P.md`, `prompts/extra-P-fixM.md`
+(`P` increments across every such thread in the project). See SKILL.md's
+Reconcile step for the full naming rule.
 
 **0. Point at the wave**
 
@@ -70,9 +76,9 @@ is emitted for a screen that has not been approved.
 
 **2. Emit the prompt**
 
-Update `spec-wN.md`'s Screen layout section from the approved prototype, then
-write `prompts/wN.md` from `templates/wave-prompt.md` and show it in a fenced
-block. Rules in `references/mentor-studio-prompt.md`. Before showing it, check:
+Update `specs/spec-wN.md`'s Screen layout section from the approved prototype,
+then write `prompts/wN.md` from `templates/wave-prompt.md` and show it in a
+fenced block. Rules in `references/mentor-studio-prompt.md`. Before showing it, check:
 
 - [ ] Under 200 lines total
 - [ ] At most 8 numbered CHANGES
@@ -112,8 +118,14 @@ steps 5 and 6 are for.
 Open the published screen and the approved prototype side by side. List **every**
 difference before fixing any of them. Then one re-prompt covering all of them.
 
+Write that re-prompt from `templates/fix-prompt.md` as `prompts/wN-fixM.md`
+(`M` increments per wave, `fix` is the only suffix — never `diag`/`debug`/a
+bare name). It must be self-contained: state the current behavior and the
+fix directly, never by referencing an earlier fix file or a spec by name —
+Mentor Studio never sees `prompts/` or `specs/`, only what is pasted.
+
 **Budget: two reconcile rounds.** After the second, record what remains in the
-log as accepted and move on. A wave with `fidelidade: demo` is the exception and
+log as accepted and move on. A wave with `fidelity: demo` is the exception and
 gets as many rounds as it needs.
 
 **6. Record and test**
@@ -167,10 +179,10 @@ All execution detail lives in `execution-log.md`. One entry per wave:
 
 ```
 ## W<N> — <name>  |  <started> → <finished>
-- Prompt: prompts/w<N>.md (<N> lines), canal <x> — pasted once
+- Prompt: prompts/w<N>.md (<N> lines), channel <x> — pasted once
 - [Re-prompt <n>: <what was missing or wrong in the prompt>]
 - [Deviation: <what Mentor did instead> → <how resolved>]
-- Compare: <N> differences — <N> reconciled, <N> accepted (fidelidade <x>)
+- Compare: <N> differences — <N> reconciled, <N> accepted (fidelity <x>)
 - Gate: PASS
 - Tests: <N>/<N> pass
 - Status: DONE
@@ -191,7 +203,7 @@ line — that list is the entire input to the retrospective.
 - Re-send a full wave prompt after a partial success.
 - Create placeholder screens for a future wave's links.
 - Put a hex literal in a screen or block.
-- Let a reconcile loop run past two rounds on a `secundária` screen.
+- Let a reconcile loop run past two rounds on a `secondary` screen.
 - Describe a component instead of naming the OutSystems UI block.
 
 ---

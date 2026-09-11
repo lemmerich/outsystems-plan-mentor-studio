@@ -7,14 +7,14 @@ not debt. What matters instead is that nobody mistakes one for the other.
 ## Before the demo
 
 - [ ] `tests/demo.spec.ts` green on the environment being demoed
-- [ ] Every `fidelidade: demo` screen compared against the prototype with zero
+- [ ] Every `fidelity: demo` screen compared against the prototype with zero
       outstanding differences
 - [ ] Seed data reads like the customer's world: real-sounding names, plausible
       dates, realistic volume on the screens the demo opens
 - [ ] Every stub returns something plausible, and fails visibly if the demo goes
       off-script rather than returning silence
 - [ ] Login for the demo user works from a clean browser profile
-- [ ] Accepted diffs from `secundária` screens reviewed once — is any of them on
+- [ ] Accepted diffs from `secondary` screens reviewed once — is any of them on
       screen during the demo after all?
 
 ## Handing the PoC to someone else

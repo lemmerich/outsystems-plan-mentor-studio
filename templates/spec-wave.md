@@ -1,10 +1,10 @@
 # W<N> — [Wave name]
 
 **Wave N of M** · [committed / deferred]
-`canal: appgen | mentor-studio | manual` · `fidelidade: demo | secundária`
+`channel: appgen | mentor-studio | manual` · `fidelity: demo | secondary`
 
-> `fidelidade: demo` = this screen is on the demo script. Unbounded reconcile
-> rounds, and a case in `tests/demo.spec.ts`. `secundária` = two reconcile
+> `fidelity: demo` = this screen is on the demo script. Unbounded reconcile
+> rounds, and a case in `tests/demo.spec.ts`. `secondary` = two reconcile
 > rounds, then accept the remaining diffs and log them.
 
 ---
@@ -50,7 +50,7 @@ These are the definition of this wave's scope. Written first, read first.
 | W<N>-03 | Visual: [describe] | [what layout or color to assert] |
 
 Exact messages (used verbatim in test assertions):
-- `"[PT-BR message text]"` — shown when [condition]
+- `"[Exact message text, in the project's target language]"` — shown when [condition]
 
 > Mark any test that cannot be verified on screen with `via db_query`.
 > These check things that look correct visually when they are wrong:
@@ -60,9 +60,9 @@ Exact messages (used verbatim in test assertions):
 
 ## Screens
 
-### [ScreenName] — PT-BR title: "[Título]"
+### [ScreenName] — screen title: "[Title, in the project's target language]"
 
-**Access:** [Auditor / Administrator / Manager / public]
+**Access:** [Reviewer / Administrator / Manager / public]
 
 **Layout:**
 
@@ -104,7 +104,7 @@ Never one field per line unless the field genuinely needs full width.]
 2. [step]
 
 **Error cases:**
-- `"[Exact PT-BR error message]"` — when [condition]
+- `"[Exact error message, in the project's target language]"` — when [condition]
 
 ---
 
@@ -112,7 +112,7 @@ Never one field per line unless the field genuinely needs full width.]
 
 - Every color is a theme variable — a hex literal in any screen or block is a defect
 - Form layout: [describe the column grouping — e.g., "2-column grid: code + date on row 1, name + reference on row 2"]
-- Status badges: read text from `LabelPtBr`, not `Label`
+- Status badges: read text from the project's own localized-label attribute (e.g. `LabelPtBr`), not the platform default `Label` — name the actual attribute here
 - [Any wave-specific UI notes]
 
 ---
@@ -136,7 +136,7 @@ This wave does not build:
 ## Prompt
 
 `prompts/w<N>.md` — generated from this spec via `templates/wave-prompt.md`.
-Only `canal: mentor-studio` waves have one.
+Only `channel: mentor-studio` waves have one.
 
 **If this wave stalls** (Mentor drops items, or a third re-prompt is needed):
 split here. Paste [first part] first, confirm [specific artifact or count] in the

@@ -12,7 +12,7 @@ changed, why, and the file-by-file status.
 ## Versioning
 
 This fork uses **semantic versioning with a fork suffix**: `<upstream-version>-ms.<fork-iteration>`.
-Current: **v0.8.0-ms.9**, based on upstream v0.8.0 (commit `a1ef0f4`).
+Current: **v0.12.1-ms.3**, based on upstream v0.12.1 (commit `9a7cc1c`).
 
 | Doc | Answers |
 |---|---|
@@ -28,10 +28,12 @@ Current: **v0.8.0-ms.9**, based on upstream v0.8.0 (commit `a1ef0f4`).
 ```
 SPEC-REVIEW.md      ambiguities and assumptions, signed off before planning
 RUNBOOK.md          wave order, gates, failure playbook, demo script
+README.md           per-project orientation — where to start, what not to touch
 execution-log.md    one entry per wave: prompts, re-prompts, accepted diffs
-spec-w0.md …        one spec per wave (canal + fidelidade on the header)
-prompts/w1.md …     the paste-ready Mentor Studio prompt for each wave
-prototipo-<x>.html  one living prototype, republished to the same URL
+specs/spec-w0.md …  one spec per wave (channel + fidelity on the header)
+prompts/w1.md …     the paste-ready Mentor Studio prompt for each wave, plus
+                    wN-fixM.md reconcile fixes and extra-P.md ad-hoc prompts
+prototype-<x>.html  one living prototype, republished to the same URL
 tests/
   playwright.config.ts   data-test, HTML reporter, storageState projects
   auth.setup.ts          logs in once
@@ -64,7 +66,7 @@ Spec  →  SPEC-REVIEW.md  →  demo script  →  prototype  →  waves
               re-prompt  ◀──  compare vs prototype  ◀──  static gate
                     │                                          │
                     └──────────  2 rounds max  ─────────▶  Playwright
-                                (unbounded if fidelidade: demo)
+                                (unbounded if fidelity: demo)
 ```
 
 Three things the operator types across a whole project: the spec, `W3 done`, and

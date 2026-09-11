@@ -1,8 +1,8 @@
 ---
 name: outsystems-plan-mentor-studio
-version: "0.8.0-ms.12"
-date: "2026-09-04"
-upstream: "0.7.0"
+version: "0.12.1-ms.3"
+date: "2026-09-11"
+upstream: "0.12.1"
 description: >
   Guides you from a blank folder to a complete OutSystems build plan through
   a short interactive interview. Reads your spec and reference screens, proposes
@@ -29,8 +29,13 @@ Running this skill in a project folder creates:
 ```
 SPEC-REVIEW.md          ambiguities and assumptions, signed off before planning
 RUNBOOK.md              the single source of truth: waves, gates, execution order
-spec-w1.md … spec-wN.md one file per wave
-prompts/w1.md … wN.md   the paste-ready Mentor Studio prompt for each wave
+README.md               orientation for this project — where to start, what not to touch
+specs/
+  spec-w1.md … spec-wN.md   one file per wave
+prompts/
+  w1.md … wN.md         the paste-ready Mentor Studio prompt for each wave
+  wN-fix1.md, wN-fix2.md, …   reconcile fixes for wave N, in order (never a bare/diag name)
+  extra-1.md, extra-1-fix1.md, …   ad-hoc prompts not tied to any wave
 tests/
   playwright.config.ts
   package.json
@@ -107,14 +112,14 @@ any wave: the operator creates every artifact the plan will touch — the web
 app and each Agentic App — empty, in ODC, with the **final names fixed up
 front**. Record them in the RUNBOOK under "Project facts" as a small table
 (artifact name → type → which waves touch it). Every wave prompt from then
-on opens each of its sections with `Módulo alvo: <ArtifactName>` so the
+on opens each of its sections with `Target module: <ArtifactName>` so the
 operator knows which ODC module to have open before pasting that section.
 
 This does not relax the one-testable-outcome-per-wave rule (see "The core
 principle" below) — a wave is still sized by what a human can click and
 verify at the end, never by "one artifact, one wave." A wave whose outcome
 needs both an agent configured and a screen that calls it is **one wave**
-with a prompt split into two `Módulo alvo` sections, pasted into two
+with a prompt split into two `Target module` sections, pasted into two
 different Mentor Studio sessions in sequence, gated together once both
 land. Splitting by artifact instead would produce a wave that ends with an
 agent nobody can see working — exactly the kind of non-verifiable wave the
@@ -123,13 +128,24 @@ core principle exists to prevent.
 **Step 0 — Provisioning is not a wave, and it never gets a wave number.**
 Creating an empty artifact has nothing a human can click or verify — it
 fails the core principle outright — so it does not belong in the wave table
-(no `W0`, no `W-1`, no row at all) and it gets no `spec-w0.md` or
+(no `W0`, no `W-1`, no row at all) and it gets no `specs/spec-w0.md` or
 `prompts/w0.md` of its own. It lives entirely as its own section in
 RUNBOOK.md: the provisioned-artifacts table (name, type, which waves carry
-a `Módulo alvo:` section for it) plus a one-line instruction to create them
+a `Target module:` section for it) plus a one-line instruction to create them
 manually, empty, before anything else starts. `W0` is still the first
 *wave* — the theme wave — and starts only once Step 0's table is fully
 checked off.
+
+---
+
+## Communication style
+
+Reports, status updates, and wave summaries during execution must be
+**terse by default** — state the result, not the reasoning behind it. No
+padding, no restating context the operator already has, no explaining what
+happened before saying whether it worked. If the operator wants detail,
+they ask for it. This applies throughout the wave cycle (Compare reports,
+Distill proposals, bug reports) — not just final summaries.
 
 ---
 
@@ -176,7 +192,7 @@ So for every wave that touches UI, the sequence is always:
 ```
 
 **One cumulative prototype, not one per wave.** Build a single HTML file
-(e.g. `prototipo-<projectname>.html`) with a lightweight tab/nav switcher
+(e.g. `prototype-<projectname>.html`) with a lightweight tab/nav switcher
 between screens, and evolve it wave over wave — republishing the same
 Artifact URL each time (see Artifact tool: pass `url` on subsequent
 publishes to update in place rather than creating a new page). This keeps
@@ -187,7 +203,7 @@ not a throwaway mockup.
 
 **How to prototype a wave:**
 
-1. Base the visual system on whatever reference material Question 3
+1. Base the visual system on whatever reference material Question 4
    provided (colors, spacing, component patterns). If nothing was provided,
    propose a palette and ask the user to approve it before building more
    than one screen on top of it — a theme decision made silently in HTML
@@ -246,17 +262,29 @@ execute together against Mentor; write two spec files and fire two prompts.
 ## The wave execution cycle
 
 Executing a wave is not "paste the prompt, publish, done" — it is a fixed
-six-step loop, and it applies whether the wave is brand new or a fix on top
+seven-step loop, and it applies whether the wave is brand new or a fix on top
 of one already published. **Skip a step only when the user explicitly says
 to; never skip a step silently.**
 
+**The same rule applies outside the wave cycle entirely.** A user-reported
+live bug on an already-built app is not exempt from checking
+`references/recipes.md`, `references/prototype-to-widgets.md`, and
+`references/backend-and-data-gotchas.md` first — most of the recipes and
+lessons in those three files were written *from* debugging an already-built
+app, not from wave planning. Before tracing a bug from scratch, search those
+files for the symptom (a stale/wrong-version field, a screen showing only
+partial data after a join, a save that silently no-ops) — a matching entry
+turns a multi-turn investigation into a five-minute targeted fix, and
+skipping this check is exactly how a previously-documented bug gets
+re-discovered the hard way.
+
 **Before starting the cycle for the next wave, re-check the plan itself**:
-re-read that wave's `spec-wN.md` in full (not from memory — see
+re-read that wave's `specs/spec-wN.md` in full (not from memory — see
 `prototype-to-widgets.md` #16) and check whether anything discovered while
 executing *previous* waves changes what this wave should do — a data-model
 exception granted mid-build, a renumbering, a scope item that moved, a bug
 fix that already covers part of this wave's stated scope. Update
-`RUNBOOK.md`/`spec-wN.md` first if something's stale, *then* start step 1.
+`RUNBOOK.md`/`specs/spec-wN.md` first if something's stale, *then* start step 1.
 This is a standing check, every wave, not a one-time planning-phase step.
 
 ```
@@ -331,13 +359,47 @@ This is a standing check, every wave, not a one-time planning-phase step.
                   appended inside `wN.md`**: `prompts/wN-fixM-<slug>.md`,
                   where `M` increments in the order fixes were sent for that
                   wave (`w5-fix1-...`, `w5-fix2-...`) so the chronological
-                  order is legible from the filename alone. `wN.md` holds
-                  only the wave's original prompt plus operator notes in its
-                  footer — it does not grow a "Reconcile round N" section
-                  mid-wave. A read-only diagnostic round (§4 above) still
-                  gets its own numbered fix file even though it changes
-                  nothing, since it is still a distinct paste on a distinct
-                  occasion and the operator needs to find it later.
+                  order is legible from the filename alone, and the highest
+                  `M` for a given `N` is always the last thing pasted for
+                  that wave. `wN.md` holds only the wave's original prompt
+                  plus operator notes in its footer — it does not grow a
+                  "Reconcile round N" section mid-wave. **`fix` is the only
+                  suffix `prompts/` ever uses — never `diag`, `debug`,
+                  `retry`, or a bare descriptive filename with no wave/fix
+                  number.** A read-only diagnostic round (§4 above) is still
+                  a fix in this numbering, even though it changes nothing:
+                  it takes the next `M`, not a separate `diag` counter — two
+                  parallel numbering schemes on the same wave is exactly
+                  what makes "which file is current" unanswerable later. If
+                  a request doesn't belong to any wave at all (an ad-hoc
+                  debugging session, a one-off maintenance action, anything
+                  the RUNBOOK's wave table has no row for), it still follows
+                  the same shape with `extra` standing in for the wave
+                  number: `prompts/extra-P.md` for the first prompt on that
+                  thread, `prompts/extra-P-fixM.md` for follow-ups on it,
+                  where `P` increments across every such thread in the
+                  project (`extra-1`, `extra-2`, ...) — never a name with no
+                  number in either position, since the number is what lets
+                  the operator find the latest file for a thread without
+                  reading contents.
+
+                  **Every prompt is self-contained — it does not lean on
+                  history Mentor Studio itself has no access to.** Mentor
+                  Studio has no memory of earlier sessions and never reads
+                  `prompts/wN-fixM.md` files — it only sees whatever text is
+                  pasted into the current chat. A sentence like "after
+                  w10-fix4 was already fixed" or "as we saw in the previous
+                  fix" names a fact for the *operator's* orientation, not
+                  Mentor's, and reads as a dangling reference to context
+                  Mentor never had. State the CURRENT observed behavior and
+                  the CURRENT relevant facts directly (what fails, the exact
+                  error, which artifact) — never phrase a prompt as if
+                  Mentor already knows what a differently-named file
+                  established. This is a stricter version of the context-pack
+                  rule in "The channel" above: it isn't just that old prompts
+                  are expensive to resend, it's that referencing them by
+                  filename doesn't work at all — there is nothing on the
+                  other end of that reference.
                   **Before writing any CSS fix prompt targeting an element
                   a PRIOR wave already patched** (any overlay/modal/card
                   named in an earlier `wN-fix.md` prompt), first dump every
@@ -369,6 +431,30 @@ This is a standing check, every wave, not a one-time planning-phase step.
 6. Test         — update/add E2E test cases for what changed, then ask the
                   user whether to run them now (never auto-run — see the
                   RUNBOOK's per-wave procedure)
+7. Distill      — before declaring the wave closed, evaluate whether
+                  anything hit this wave is a new, generalizable lesson
+                  (a bug pattern, a Mentor Studio quirk, a fragile widget
+                  behavior) — not just "did something go wrong," most
+                  waves that hit a real snag qualify. If nothing new and
+                  generalizable came up, say so in one line and stop —
+                  this step is not "always add a lesson." **If something
+                  did**, do NOT just append it to `recipes.md` /
+                  `prototype-to-widgets.md` / `backend-and-data-gotchas.md`.
+                  First re-read the existing lessons/recipes those new
+                  findings are adjacent to — a fresh discovery can
+                  invalidate, narrow, or supersede an older one (e.g. "we
+                  learned the real fix is upstream" can mean an old
+                  lesson's workaround should be removed, not kept next to
+                  the new one). Then propose, in the conversation, what to
+                  add/change/remove and where, and **wait for the
+                  operator's explicit go-ahead before editing any
+                  reference file** — do not silently rewrite the skill's
+                  own reference files as a side effect of closing a wave.
+                  Only after approval, make the edit(s) as one coherent
+                  pass, not a series of disconnected appends. The goal is
+                  a reference set that stays internally consistent as it
+                  grows, not a longer and longer list of lessons that may
+                  quietly contradict each other.
 ```
 
 **A prior approval is not a standing approval.** A prototype screen may have
@@ -451,7 +537,7 @@ mechanics behind both of these.
 call. Here every round costs a human copy/paste, a Mentor run and a publish, so
 an unbounded loop is how a two-day PoC becomes a two-week one. After the second
 round, stop: record the remaining differences in the wave log as accepted and
-move on. The exception is a wave marked `fidelidade: demo` - a screen on the
+move on. The exception is a wave marked `fidelity: demo` - a screen on the
 demo path gets as many rounds as it needs, because that screen is the product.
 Everything else is scenery.
 
@@ -460,7 +546,7 @@ step in the cycle before doing anything else** — even when the user's last
 message already tells you to continue. This is not optional narration: the
 whole point of a fixed cycle is that neither the model nor the person
 reviewing it has to hold "what comes next" in their head. A short line is
-enough: *"Prototype approved — updating spec-w5.md and emitting the W5 prompt next."*
+enough: *"Prototype approved — updating specs/spec-w5.md and emitting the W5 prompt next."*
 If the user redirects mid-cycle (a different bug to chase, a question), pick
 the cycle back up at the step you were on rather than silently dropping it.
 
@@ -472,9 +558,9 @@ after it.
 
 This cycle is why `RUNBOOK.md`'s per-wave procedure (Step 6 below) is
 written as prototype → approve → spec → emit → paste → publish → compare
-against prototype → tests, not as a single "build the wave" instruction — and it is
-why the static gate includes "screen matches the approved
-prototype" as a checklist item, not just "matches the spec text."
+against prototype → tests → distill, not as a single "build the wave"
+instruction — and it is why the static gate includes "screen matches the
+approved prototype" as a checklist item, not just "matches the spec text."
 
 ---
 
@@ -532,7 +618,20 @@ Read it completely before continuing. Extract and note internally:
 - Exact user-facing messages and validation text — these become test assertions
 - Any external integrations or AI boundaries
 
-### Question 2 — Additional reference materials
+### Question 2 — Target language
+
+> "What language should generated prompts, UI text, and error messages be
+> in? Default is English unless you say otherwise."
+
+Record the answer once in RUNBOOK "Project facts" and use it consistently
+in every spec and prompt from then on — screen titles, button labels, error
+messages, and any localized-label attribute name (e.g. `LabelPtBr` for a
+PT-BR project). Default to English when the operator has no preference;
+don't assume a language from the spec document's own language alone (a
+spec can be written in English for a project whose UI must ship in
+Portuguese, or vice versa).
+
+### Question 3 — Additional reference materials
 
 > "Do you have any other reference documents? For example: a design system
 > file, an existing data model, API contracts, or a glossary. Share anything
@@ -541,7 +640,7 @@ Read it completely before continuing. Extract and note internally:
 Read whatever is provided. Note any constraints, naming conventions, or
 technical boundaries that should shape the wave specs.
 
-### Question 3 — Reference screens
+### Question 4 — Reference screens
 
 > "Do you have reference screenshots or Figma exports showing the expected
 > visual style? If yes, share them. If no, the plan will have limited visual
@@ -570,7 +669,7 @@ the zero-hex-literal gate cannot be enforced. The token reference above still
 applies even with no visual direction supplied — it becomes the default
 palette instead of a mapping target.
 
-### Question 4 — The value path
+### Question 5 — The value path
 
 > "What is the shortest sequence of actions a user needs to complete for the
 > product to be useful? For example: create → process → review → finalize.
@@ -582,10 +681,10 @@ Admin and reporting waves come last.
 **In a PoC the value path is the demo script.** Ask for it as one: the exact
 click sequence you will run in front of the customer, in order, with what
 appears on screen at each step. Written that way it does three jobs at once - it
-orders the waves, it decides which screens get `fidelidade: demo`, and it is the
+orders the waves, it decides which screens get `fidelity: demo`, and it is the
 one Playwright spec that must never go red. Keep it verbatim in the RUNBOOK.
 
-### Question 5 — Target environment
+### Question 6 — Target environment
 
 > "Is this a new app or an existing one? And: is the app open (no login) or
 > does it require authentication? If it uses the ODC Web template, it ships
@@ -607,24 +706,24 @@ This determines:
 
 **Also ask which channels are available:** AppGen in the ODC portal, Mentor
 Studio in the IDE, Mentor MCP. They are not interchangeable and every wave gets
-a `canal:`.
+a `channel:`.
 
 **Also ask for the tenant's base URL** (e.g. `https://<tenant>.outsystems.app`)
 and record it once in RUNBOOK "Project facts." Every published screen's URL
-follows `<tenant-url>/<módulo>/<tela>`, so once this is on file the Compare
+follows `<tenant-url>/<module>/<screen>`, so once this is on file the Compare
 step (see "The wave execution cycle") never has to ask the operator for a URL
-again — it's derived from the wave's own `Módulo alvo` and the screen name
+again — it's derived from the wave's own `Target module` and the screen name
 already in the spec.
 
 **Also ask whether the plan needs any AI agent (Agent Workbench).** If yes,
 each agent is a separate Agentic App artifact, provisioned manually before
 W0 (see consequence 5 under "The channel," above) with its final name fixed
-up front. Note in the RUNBOOK which waves will carry a `Módulo alvo:`
+up front. Note in the RUNBOOK which waves will carry a `Target module:`
 section for each agent — this is decided now, not improvised at emit time.
 
-### Question 6 — Confirm the wave proposal
+### Question 7 — Confirm the wave proposal
 
-After answering questions 1–4, **propose the wave breakdown** before generating
+After answering questions 1–6, **propose the wave breakdown** before generating
 any files. Show for each wave:
 - What the user will be able to click and see
 - The single sentence that describes what the wave proves
@@ -670,11 +769,24 @@ several entity types, business-rule-shaped data like scoring bands), treat
 it as real wave weight when judging size, even though it isn't a screen or
 an action in the usual sense.
 
+**Before deriving waves for any capability that calls an AI/LLM model**
+(a suggestion, a summary, a classification, an extraction — not just a
+dedicated "AI wave," any wave where this comes up at all), read
+`references/architecture-recipes.md` first. Its first recipe — an agent
+must not be coupled to the project that calls it — changes how such a
+wave gets split: the agent's own logic becomes its own asset with its
+own wave-equivalent scoping (build it, test it standalone via ODC
+Studio's own test console or a temporary debug screen — no MCP harness
+in this channel), and the calling app only ever gets a thin integration
+wave on top. Scoping this as ordinary server actions inside the calling
+app, the way every other wave in this file is scoped, is exactly the
+mistake this recipe exists to catch before a spec gets written.
+
 ### The shape that usually emerges
 
 ```
 W0  App + theme    app exists, OutSystems UI theme customised, shell renders
-                   (canal: appgen or manual — never Mentor Studio)
+                   (channel: appgen or manual — never Mentor Studio)
 W1  Foundation     reference data seed, the first screen (layout only)
 W2  First feature  data loads in that screen; create form exists and validates
 W3  Core action    the main business action works end to end
@@ -703,11 +815,11 @@ wave.
 | Configuring one Agentic App (an agent's inputs/outputs/instructions) | Mentor Studio, targeting that Agentic App's own module | agents are edited the same conversational way, just in a different artifact |
 | Bulk repetitive change across many artifacts | MCP, if available | pasting the same prompt eight times is not a plan |
 
-Every wave spec states its `canal:` on the header line. A wave whose channel is
+Every wave spec states its `channel:` on the header line. A wave whose channel is
 not Mentor Studio still gets a spec and a gate; it just gets no `prompts/wN.md`.
 
 **A wave touching more than one artifact gets one `prompts/wN.md` with more
-than one `Módulo alvo` section** — see consequence 5 above. Do not create a
+than one `Target module` section** — see consequence 5 above. Do not create a
 separate `prompts/wN-agentapp.md`; one file, sectioned, keeps the wave's
 "one thing to hand the operator" property intact.
 
@@ -740,7 +852,7 @@ table rather than silently adding a variable.
 AppGen.** Part 1 (manual/AppGen): create the app on the artifact provisioned
 in Step 0, base OutSystems UI theme, shell/nav that renders. Part 2 (Mentor
 Studio, `prompts/w0.md`): apply the actual theme tokens and, critically,
-**build a permanent "Tema & Identidade Visual" screen** — color swatches
+**build a permanent "Theme & Visual Identity" screen** — color swatches
 labeled with their token name (not just the swatch), a contrast check
 between text and background pairs, a typography specimen (each face/weight
 in use), the icon set, and every reusable state (button variants, status
@@ -754,10 +866,10 @@ again every time a later wave's Compare step needs to check a color or a
 component state against the source of truth instead of eyeballing it.
 
 **The living prototype gets the same screen, and gets it first.** Before
-building any feature screen in the prototype, build its Tema/Identidade
-Visual screen using the same tokens documented in the RUNBOOK's theme
-table (see Step 6) — this is what Question 3's palette decision (see Step
-1) graduates into once approved, and it is the reference every subsequent
+building any feature screen in the prototype, build its Theme screen
+using the same tokens documented in the RUNBOOK's theme table (see Step
+6) — this is what Question 4's palette decision (see Step 1) graduates
+into once approved, and it is the reference every subsequent
 prototype screen is built against for consistency.
 
 From W1 on, design direction in a wave prompt names the native OutSystems UI
@@ -799,12 +911,13 @@ with no error. Use `RegisterX`, `NewX`, `OpenX`, `CommitX` instead.
 
 ## Step 3 — Write the wave specs
 
-One file per wave. Each file follows this structure:
+One file per wave, at `specs/spec-wN.md` (mirrors `prompts/` — specs live in
+their own folder, not at the project root). Each file follows this structure:
 
 ```
 ## W<N> — <short name>
 
-`canal: appgen | mentor-studio | manual` · `fidelidade: demo | secundária`
+`channel: appgen | mentor-studio | manual` · `fidelity: demo | secondary`
 
 ### What this wave proves
 One sentence. What can a human do and verify after this wave is published?
@@ -867,10 +980,10 @@ of the same pattern is exactly what produced the multi-turn fixes
 
 **Rules for writing specs:**
 
-- Set `fidelidade: demo` only for screens on the demo script. Those get an
+- Set `fidelity: demo` only for screens on the demo script. Those get an
   unbounded reconcile loop and a case in `demo.spec.ts`. Everything else is
-  `secundária`: two reconcile rounds, then accept the diff and log it.
-- Set `canal:` deliberately. Only `mentor-studio` waves get a `prompts/wN.md`.
+  `secondary`: two reconcile rounds, then accept the diff and log it.
+- Set `channel:` deliberately. Only `mentor-studio` waves get a `prompts/wN.md`.
 - Quote every user-facing message verbatim. "Invalid format. Please upload a PDF." not "a validation message."
 - Mark every `Text` field that must be truly unbounded — Mentor silently creates them as `Text(50)` otherwise.
 - The out-of-scope section must name what the previous wave owns (so Mentor cannot helpfully rebuild it) and what the next wave will own (so it does not build ahead).
@@ -904,12 +1017,12 @@ Key rules:
 - `Title` widget renders a `<span>`, not a heading — `getByRole('heading')` never matches it.
 - `TableRecords` `data-test` attributes land on `<td>` cells, not `<tr>` — and this is a **real platform limitation, not a prompt-wording gap**: ODC Studio does not expose a `data-test`/Extended Properties slot on the row (`<tr>`) a `TableRecords` widget generates, only on individual cells/columns. Confirmed by asking Mentor directly after a fix prompt explicitly requesting the `<tr>` placement failed twice — Mentor's own answer named the two real options: (a) keep `data-test` on a cell and have tests reach the row via `.closest('tr')`/`page.locator('tr').filter({ hasText })`, or (b) replace `TableRecords` with a `List` block (renders `<div>` rows, which do accept `data-test` directly) — a much larger change (different HTML, different styling, rebuilding the row layout) that is disproportionate just to fix a selector. **Default to (a) — accept the cell placement and write the test around it — unless the wave has an independent reason to prefer a `List` block already.** Don't spend a fix-prompt round asking Mentor to move it to the `<tr>`; the answer is already known. This corrects an earlier version of this lesson that assumed the `<tr>` placement was achievable with better prompt wording — it wasn't; the wording was never the problem.
 - A data-driven dropdown defaults to its placeholder — always call `selectOption({ label })` before asserting the happy path.
-- Status badges bound to the wrong column show the English `Label` instead of the PT-BR `LabelPtBr` — assert the exact localized string.
-- `getByRole('radio'/'checkbox'/'button', { name })` matches by substring by default — two options where one's label is a prefix of another's (e.g. "Não" / "Não se aplica") resolve to 2 elements and throw a strict-mode violation. Pass `{ name, exact: true }` whenever any two option labels in the same group could overlap as substrings. The same trap applies to `.filter({ hasText: 'X' })` on any locator — a status/label pair like "Ativa"/"Inativa" collides the same way (`hasText: 'Ativa'` also matches "Inativa"); use a regex with a negative lookbehind (`/(?<!In)Ativa/`) or `hasText: exactString` semantics instead of a bare substring whenever one label could be contained inside another.
+- Status badges bound to the wrong column show the platform default `Label` instead of the project's own localized-label attribute (e.g. `LabelPtBr`, `LabelEs` — whatever the project names it) — assert the exact localized string the project actually uses.
+- `getByRole('radio'/'checkbox'/'button', { name })` matches by substring by default — two options where one's label is a prefix of another's (e.g. "No" / "Not applicable") resolve to 2 elements and throw a strict-mode violation. Pass `{ name, exact: true }` whenever any two option labels in the same group could overlap as substrings. The same trap applies to `.filter({ hasText: 'X' })` on any locator — a status/label pair like "Active"/"Inactive" collides the same way (`hasText: 'Active'` also matches "Inactive"); use a regex with a negative lookbehind (`/(?<!In)Active/`) or `hasText: exactString` semantics instead of a bare substring whenever one label could be contained inside another. This is a general substring-collision risk, not an English-only one — the same pair exists in whatever language the project's labels are in (e.g. PT-BR "Ativa"/"Inativa").
 - A `data-test` meant to identify each item of a repeated list can land on the list's own wrapping container instead of each item — a query for it still finds "an element" so a shallow check passes, but resolves to exactly 1 match (not N) with every item's text concatenated together. Verify the resolved count equals the expected item count before trusting the selector.
 - A helper function that clicks a button which triggers navigation must wait for that navigation to actually land (`page.waitForURL(...)` or wait for a locator unique to the destination screen) before returning — a caller that does `const url = page.url()` immediately after calling the helper can capture the pre-navigation URL if the helper returns before the redirect completes, then silently operate on the wrong screen for the rest of the test.
 - When manually verifying a reactive OutSystems screen's behavior via browser automation (not through Playwright's own `.click()`, which is a trusted event) — e.g. probing a bug hypothesis with `element.click()` or dispatching synthetic `input`/`change` events via `page.evaluate` — expect those synthetic events to update the DOM's local `checked`/`value` state but **not** reliably fire the framework's own reactive `OnChange` binding. A synthetic click can look like a repro failure (or success) that has nothing to do with the app: confirm any finding from synthetic interaction with a **real** click (via a genuine pointer-driven click tool, or Playwright's own `.click()`) before reporting it as a bug.
-- When a wave's prototype introduces a new dynamic visual block (counters, computed labels, status pills) that a test will need to assert on, put explicit `data-test` attribute names for its pieces directly in the Mentor prompt. Without it, Mentor names elements after its own internal widget IDs (e.g. `#ClassificacaoPill`, `.audit-resumo-score-val`) that only surface after the fact via DOM inspection — working, but an avoidable extra round-trip.
+- When a wave's prototype introduces a new dynamic visual block (counters, computed labels, status pills) that a test will need to assert on, put explicit `data-test` attribute names for its pieces directly in the Mentor prompt. Without it, Mentor names elements after its own internal widget IDs (e.g. `#ClassificationPill`, `.audit-summary-score-val`) that only surface after the fact via DOM inspection — working, but an avoidable extra round-trip.
 
 **Tests are written into the spec but executed separately.** When a wave is
 implemented and published, ask:
@@ -918,6 +1031,15 @@ implemented and published, ask:
 > the next wave first?"
 
 Never auto-run tests. The user decides when.
+
+**When the user does say to run tests, that's approval for the wave's own
+spec only — not the whole suite.** A message that merely raises the topic
+("e2e?", "e os testes?") is not approval either; it's an opening to ask
+which scope they want. Default to the narrowest scope (the wave just
+published) and confirm before broadening to "run everything." Running the
+full suite takes real time and, on a paid runner, real money — the same
+discipline that applies to the operator pasting into Mentor Studio (never
+inferred, always an explicit per-step yes) applies here.
 
 **After running tests, record the evidence, not just the tally.** In the
 wave's `logs/wN.md`, write the actual pass/fail count AND the path to the
@@ -958,11 +1080,11 @@ Then append one entry in this exact format — nothing more:
 
 ```markdown
 ## W<N> — <name>  |  <started> → <finished>
-- Prompt: prompts/w<N>.md (<N> lines), canal <x> — pasted once
+- Prompt: prompts/w<N>.md (<N> lines), channel <x> — pasted once
 - [Plan check: <one line — what was corrected before Mentor executed>]
 - [Re-prompt <n>: <one line: what was missing or wrong in the prompt>]
 - [Deviation: <what Mentor did instead> → <how resolved>]
-- Compare: <N> differences — <N> reconciled, <N> accepted (fidelidade <x>)
+- Compare: <N> differences — <N> reconciled, <N> accepted (fidelity <x>)
 - Gate: PASS | FAIL (<reason>)
 - Tests: <N>/<N> pass [(<IDs> deferred — <reason>)]
 - Status: DONE | BLOCKED (<reason>)
@@ -993,7 +1115,7 @@ The RUNBOOK is the operator's guide. It is generated once at plan creation and
 updated as waves execute. It contains:
 
 1. **Resumption pointer** — `## Current wave` updated to the active wave before each fire
-2. **Project facts** — classification (PoC or final application), the demo script verbatim, and the **provisioned artifacts table**: one row per ODC artifact (web app, each Agentic App) with its fixed name and which waves carry a `Módulo alvo:` section for it. Every artifact in this table must exist, empty, before W0 starts (Step 0 — Provisioning).
+2. **Project facts** — classification (PoC or final application), the demo script verbatim, and the **provisioned artifacts table**: one row per ODC artifact (web app, each Agentic App) with its fixed name and which waves carry a `Target module:` section for it. Every artifact in this table must exist, empty, before W0 starts (Step 0 — Provisioning).
 3. **Wave table** — name, scope summary, committed vs deferred, status
 4. **Living prototype pointer** — the Artifact URL of the cumulative HTML
    prototype (see "The prototype-first principle"), plus a one-line rule:
@@ -1001,13 +1123,15 @@ updated as waves execute. It contains:
    it, and no prototype change ships without being written back into the
    wave's spec.
 5. **Per-wave procedure** — prototype/evolve the wave's screen(s) in the
-   living prototype → get user approval → update `spec-wN.md` Screen layout
+   living prototype → get user approval → update `specs/spec-wN.md` Screen layout
    from the approved prototype → emit `prompts/wN.md` and show it for the
    operator to paste into Mentor Studio → operator publishes and reports back
    → manual static gate (module-tree read-back) → compare against the
-   prototype → reconcile within budget → ask about tests
+   prototype → reconcile within budget → ask about tests → distill
+   (propose any new reusable lesson/recipe, wait for go-ahead before
+   editing the reference files)
 6. **Mentor prompt guardrails** — prepended to every Mentor prompt, every wave
-7. **Static gate checklist** — entity, action and screen counts read back from the ODC Studio module tree by the operator, zero hex literals, no unauthorized roles, **screen matches the approved prototype** (layout, grouping, negrito/weight, dynamic vs static text — verify by opening the published screen and comparing, not by re-reading the spec). **For any screen rendering a repeated list of rows with a selectable control per row** (radio group, dropdown, checkbox — an audit checklist, a survey, a set of per-item toggles): interact with the control in **two different rows**, not just one, and confirm the first row's selection survived the second row's click. A single-row test cannot catch a control accidentally bound to one shared screen variable instead of a per-row list attribute — that bug makes every row mirror whichever row was clicked last, and looks completely correct if only one row is ever touched during verification (see `references/prototype-to-widgets.md` #15). **If this wave created a new screen, check that the sidebar/menu item meant to reach it actually points there** — a nav shell built early (before every screen it links to exists yet) commonly ships every link pointing at whatever placeholder screen existed at the time, and nothing re-flags the stale link once the real screen is finally built. This is not a one-time fix, it's a standing check on every wave that adds a screen — checking once and assuming later waves won't repeat it misses the same class of bug recurring on a different menu item.
+7. **Static gate checklist** — entity, action and screen counts read back from the ODC Studio module tree by the operator, zero hex literals, no unauthorized roles, **screen matches the approved prototype** (layout, grouping, font weight, dynamic vs static text — verify by opening the published screen and comparing, not by re-reading the spec). **For any screen rendering a repeated list of rows with a selectable control per row** (radio group, dropdown, checkbox — an audit checklist, a survey, a set of per-item toggles): interact with the control in **two different rows**, not just one, and confirm the first row's selection survived the second row's click. A single-row test cannot catch a control accidentally bound to one shared screen variable instead of a per-row list attribute — that bug makes every row mirror whichever row was clicked last, and looks completely correct if only one row is ever touched during verification (see `references/prototype-to-widgets.md` #15). **If this wave created a new screen, check that the sidebar/menu item meant to reach it actually points there** — a nav shell built early (before every screen it links to exists yet) commonly ships every link pointing at whatever placeholder screen existed at the time, and nothing re-flags the stale link once the real screen is finally built. This is not a one-time fix, it's a standing check on every wave that adds a screen — checking once and assuming later waves won't repeat it misses the same class of bug recurring on a different menu item.
 8. **Failure playbook** — what to do when things go wrong
 9. **Timing log** — one row per milestone, cumulative across waves
 10. **Never list** — absolute prohibitions
@@ -1077,7 +1201,7 @@ GUARDRAILS (apply to every screen and action in this wave):
     The screen must reflect a "processing" state until the completion event
     is received.
 
-12. If this prompt has more than one `Módulo alvo:` section, paste each
+12. If this prompt has more than one `Target module:` section, paste each
     section into that artifact's own Mentor Studio session — never paste a
     web-app section into an Agentic App's session or vice versa. Each
     section is otherwise self-contained and independently gated.
@@ -1090,6 +1214,18 @@ GUARDRAILS (apply to every screen and action in this wave):
     project that never says so in the prompt gets an authenticated screen
     every time.
 ```
+
+---
+
+## Step 7 — Write README.md
+
+Generate `README.md` from `templates/PROJECT-README.md`, filled in for this
+project. It is the entry point for anyone who has never touched this project
+or this skill before: what RUNBOOK.md is for, where to start, the folder map
+(`specs/`, `prompts/`, `tests/`, `execution-log.md`), and what NOT to do. Keep
+it short — it points at RUNBOOK.md and the other files rather than repeating
+their content. Regenerate it if the folder layout changes (a new top-level
+file, a renamed convention); otherwise it is written once, at plan creation.
 
 ---
 
@@ -1115,8 +1251,9 @@ GUARDRAILS (apply to every screen and action in this wave):
 - [ ] SPEC-REVIEW.md exists and its assumptions were signed off
 - [ ] The project is classified PoC or final application in the RUNBOOK header
 - [ ] Every `mentor-studio` wave has a `prompts/wN.md` under 200 lines per fence
-- [ ] Every wave has `canal:` and `fidelidade:` set deliberately, not defaulted
+- [ ] Every wave has `channel:` and `fidelity:` set deliberately, not defaulted
 - [ ] The demo script is in the RUNBOOK verbatim and covered by `demo.spec.ts`
-- [ ] Every `prompts/wN.md` prompt is a single self-contained fenced code block per `Módulo alvo:` (guardrails included inline) — no prose the operator must merge in before pasting, and every non-prompt line outside a fence is marked `> **Nota do operador (não copiar):**`
+- [ ] Every `prompts/wN.md` prompt is a single self-contained fenced code block per `Target module:` (guardrails included inline) — no prose the operator must merge in before pasting, and every non-prompt line outside a fence is marked `> **Operator note (do not copy):**`
 - [ ] Step 0 — Provisioning has no wave number and no row in the wave table — it is its own RUNBOOK section only
 - [ ] W0's theme table maps brand colors onto real OutSystems UI tokens (`--color-primary`, `--color-neutral-N`, etc. — see references/outsystems-ui-design-tokens.md), not invented variable names
+- [ ] `README.md` exists at the project root, generated from `templates/PROJECT-README.md`

@@ -20,7 +20,7 @@ share a text block, or the operator ends up guessing where to stop copying.
 **The rule: everything meant for Mentor Studio's clipboard lives inside one
 fenced code block per artifact. Everything else — why this order, what to
 verify after, why a design call was made — is prose outside the fence,
-always opened with `> **Nota do operador (não copiar):**`.** A fence is
+always opened with `> **Operator note (do not copy):**`.** A fence is
 self-contained: it includes its own guardrails, context, objective, changes,
 markup and expected result inline, in the order in Section 1 below, so the
 operator never has to assemble a paste from a shared block up top plus a
@@ -28,11 +28,11 @@ per-module block further down. Immediately before each fence, one bold line
 names which artifact's Mentor Studio session it goes into:
 
 ```markdown
-## Módulo alvo: <ArtifactName>
+## Target module: <ArtifactName>
 
-> **Nota do operador (não copiar):** <why this module/order — optional>
+> **Operator note (do not copy):** <why this module/order — optional>
 
-**Cole o bloco abaixo inteiro na sessão do Mentor Studio de `<ArtifactName>`:**
+**Paste the entire block below into the Mentor Studio session for `<ArtifactName>`:**
 
 ​```
 CONTEXT
@@ -53,7 +53,7 @@ EXPECTED
 ...
 ​```
 
-> **Nota do operador (não copiar):** <what to check after pasting — optional>
+> **Operator note (do not copy):** <what to check after pasting — optional>
 ```
 
 A file with two artifacts has two such fenced blocks, each complete on its
@@ -130,22 +130,22 @@ only knows what's actually in the app right now and what this prompt tells
 it. Every fact a later wave depends on must be restated as a fact about the
 *current state of the app*, not as a pointer to an earlier session:
 
-- Wrong: "ExtrairTextoDocumento already exists (created in W1) — reuse it."
-- Right: "An action ExtrairTextoDocumento(Arquivo Binary) → Texto already
-  exists in this app — synchronous PDF text extraction using the OmniDoc2MD
-  Forge component. Reuse it, do not recreate it."
-- Wrong: "Same upload pattern as W1's ficha screen."
+- Wrong: "ExtractDocumentText already exists (created in W1) — reuse it."
+- Right: "An action ExtractDocumentText(File Binary) → Text already
+  exists in this app — synchronous PDF text extraction using a Forge
+  document-conversion component. Reuse it, do not recreate it."
+- Wrong: "Same upload pattern as W1's checklist screen."
 - Right: state the pattern itself, in full, as if Mentor has never seen it:
-  attach only selects a file (chip + "Trocar arquivo", no server call), a
-  separate "Carregar documento" button fires the actual call, loading
+  attach only selects a file (chip + "Change file", no server call), a
+  separate "Upload document" button fires the actual call, loading
   feedback lives on that button (spinner + disabled), never on the widget.
 
 This costs a few more lines per prompt than a wave-number shorthand would,
 and is worth it every time — the shorthand doesn't compress anything from
 Mentor's side, it just produces a prompt that reads correctly to the human
 operator while silently telling Mentor nothing. Wave numbers belong only in
-the operator's own note above/below the fence (`> **Nota do operador (não
-copiar):**`), never inside it — that note is for a human with project
+the operator's own note above/below the fence (`> **Operator note (do not
+copy):**`), never inside it — that note is for a human with project
 memory, the fence is not.
 
 ## 3. Pruning the prototype markup
@@ -181,7 +181,7 @@ goes into the prompt is one screen, cut down. Prune in this order:
    Mentor does not need ten table rows to infer a list, and ten rows crowd out
    a numbered change item. **This applies only to genuinely interchangeable
    rows** — records of the same shape where any one of them is a
-   representative example (a table of consultas, a list of fichas). It does
+   representative example (a table of records, a list of checklists). It does
    NOT apply to a small fixed set of reference items where every item's exact
    value is the point — a theme's color swatches, contrast pairs, or
    typography specimens are not "repeats," they are a finite enumerated list
@@ -206,7 +206,7 @@ goes into the prompt is one screen, cut down. Prune in this order:
    miss** — `.card`, `.mono`, a bare `h1, h2, h3, h4` rule feel generic enough
    to assume Mentor already knows them, precisely because they are reused
    across many elements. They get the same treatment as everything else in
-   this list, no exception: if the pruned markup writes `class="tema-section
+   this list, no exception: if the pruned markup writes `class="theme-section
    card"`, `.card`'s own rule is copied in even though it is "just" a shared
    card style — a class with no matching rule anywhere in the prompt is
    indistinguishable from a typo to Mentor, and it will invent per-element
@@ -228,15 +228,15 @@ Some waves need both a web-app change and an Agentic App change to land — a
 screen that calls an agent is the usual shape (see main SKILL.md, "The
 channel," consequence 5). One `prompts/wN.md` still covers the whole wave;
 it just contains more than one fenced prompt, each under its own
-`## Módulo alvo: <Name>` heading, per the file format in Section 0:
+`## Target module: <Name>` heading, per the file format in Section 0:
 
 ```markdown
-## Módulo alvo: <AgenticAppName>
+## Target module: <AgenticAppName>
 ​```
 CONTEXT ... DO NOT TOUCH ... OBJECTIVE ... CHANGES ... GUARDRAILS ... EXPECTED ...
 ​```
 
-## Módulo alvo: <WebAppName>
+## Target module: <WebAppName>
 ​```
 CONTEXT ... DO NOT TOUCH ... OBJECTIVE ... CHANGES ... PROTOTYPE MARKUP ...
 LAYOUT FACTS ... GUARDRAILS ... EXPECTED ...
@@ -343,12 +343,12 @@ because they are ODC platform defaults rather than something Mentor decides:
 | A web app → Agentic App "request" is drafted as an event the web app publishes and the agent consumes | `ITriggerGlobalNode.Event` (ODC's node for firing a global event) only accepts a **local** event of the same asset — there is no way to trigger another module's event from outside it. An event owned by the Agentic App genuinely cannot be "published" from the web app's flow; Mentor will either refuse or quietly build something that doesn't do what the prompt asked. This is easy to miss because a request/response pub-sub pair *feels* symmetric, but only one direction of that symmetry is actually implementable. | The **request** side is a normal cross-module Service Action call, not an event — the web app calls a Service Action exposed by the Agentic App (input: whatever the agent needs), and that action must return immediately, before the agent's own processing finishes, so it doesn't become a blocking wait. Only the **completion** side is an event, and it must be triggered from inside the asset that owns it — the Agentic App defines and fires its own result event locally when its work finishes; the web app's only role there is a Global Event Handler subscribing to it. State the Service Action's name and contract explicitly in the agent's own prompt (input params, "returns immediately, does not wait for the LLM"), and in the caller's prompt state it calls that action directly — never "publishes an event to" the agent for the request leg. |
 | A cross-module event is created exactly as specified (name, params, fired correctly) but the subscribing module's Mentor session reports it doesn't exist / can't be found | ODC events default to **Private** (module-internal) visibility when created. A private event is invisible outside its own module — including to a Global Event Handler in a different asset trying to subscribe to it — with no error at creation time; the gap only surfaces later, in the *other* module's session, as "this event doesn't exist," which reads like the event was never built at all even though it was. Same failure shape for a Service Action meant to be called cross-module: it must be exposed/public too, not just present. | Any time a prompt creates an event (or Service Action) specifically so a *different* module can consume it, state the visibility requirement explicitly in that artifact's own CHANGES line — "create local event X, set to **Public**" — don't rely on "expose an event" alone to imply it. If the gap is only caught after the fact (as here), the fix is a one-line re-prompt in the owning module's own session: name the event, say "set visibility to Public," republish — then re-check the consuming module's session, since it may still be looking at stale/unpublished dependency metadata until that owning module is actually published, not just saved. |
 | A filter/query comparing an entity's own Id attribute (type `Identifier`) against a value converted to `Long Integer` compiles without warning but the query returns zero rows at runtime | ODC reports this as "Unexpected Data Type" in the model, but Mentor can still generate and publish it — the failure only shows up as the query silently finding nothing, which then cascades into whatever depends on that record (an update that "succeeds" but changes 0 rows, a null-reference a few nodes later). Converting an Id `Identifier` to `Long Integer` (or vice versa) is the wrong move even though both are numeric under the hood — they are distinct types to ODC's type checker in a way that specifically breaks entity filters. | Compare entity Ids as `Text` on both sides instead of crossing into `Long Integer`/`Identifier` casts: `IdentifierToText(Entity.Id) = SomeTextParam`. This is especially relevant right after a value has round-tripped through a Text parameter (e.g. an Id serialized into an event or a DevTools input) — the natural instinct is to convert it back to a typed Id or Long Integer to "match" the entity's own Id type, but the safer, reliably-working comparison keeps both sides as Text. |
-| An action reports success ("Simulação concluída", "Salvo com sucesso") but the record it was supposed to change is unchanged when checked independently (fresh query, page reload) | A "success" message shown unconditionally after a database operation — without querying the record back afterward to confirm the value actually changed — silently degrades into exactly the same failure mode as no error handling at all, except now it actively lies. This is a natural blind spot because from the flow's own perspective the write node "ran without throwing," which reads as success even when the write's WHERE clause (see the Identifier/Long Integer gotcha above, a common cause) matched zero rows. | Don't accept a static success message as evidence a write worked — after any create/update meant to be user-visible, re-query the affected record and branch: show the intended success message only if the expected field(s) actually hold the new value, otherwise show a specific error. Ask for this explicitly in the prompt ("verify the update took effect before showing success") when the action's own correctness is in question, not just when something visibly errored. |
+| An action reports success ("Simulation complete", "Saved successfully") but the record it was supposed to change is unchanged when checked independently (fresh query, page reload) | A "success" message shown unconditionally after a database operation — without querying the record back afterward to confirm the value actually changed — silently degrades into exactly the same failure mode as no error handling at all, except now it actively lies. This is a natural blind spot because from the flow's own perspective the write node "ran without throwing," which reads as success even when the write's WHERE clause (see the Identifier/Long Integer gotcha above, a common cause) matched zero rows. | Don't accept a static success message as evidence a write worked — after any create/update meant to be user-visible, re-query the affected record and branch: show the intended success message only if the expected field(s) actually hold the new value, otherwise show a specific error. Ask for this explicitly in the prompt ("verify the update took effect before showing success") when the action's own correctness is in question, not just when something visibly errored. |
 | A dropdown appears to have an option selected (visually highlighted, correct label showing) but the screen variable bound to it is still the widget's `EmptyValue`/default when an action reads it | ODC dropdowns distinguish "an option is visually current" from "the user actively fired the selection interaction" — a user who clicks the dropdown open and then clicks away without click-selecting a specific `<option>` row can leave the bound variable at its configured `EmptyValue` (e.g. `NullIdentifier()`) even though something is showing in the closed control. Downstream code that trusts the variable directly then operates on an empty/default Id, which — combined with the Identifier/Text gotcha above — often shows up as "record not found for Id=0" rather than an obviously dropdown-shaped bug. | When a dropdown feeds an action that only makes sense with a real selection (not the empty/first state), add an explicit fallback for the case where the bound variable still equals `EmptyValue` when the action fires — e.g. default to the first item of the list it was populated from — rather than assuming a rendered option implies an active selection. Worth naming as a known risk in any prompt building a "pick one from a short list, then act on it" DevTools/debug widget, since these are exactly the low-stakes contexts most likely to skip a real select-and-confirm interaction pattern. |
 | A filter/join comparison is already correctly Text-based (see the Identifier gotcha above) and the query still returns zero/wrong rows after a fix attempt that changed nothing observable | The comparison expression was never the bug — the foreign key column it reads is null or points at a row that no longer exists (an orphaned FK from an earlier wave's seed action, a record created before that FK was populated). A null/orphaned FK produces the exact same symptom as a broken comparison — join finds nothing, no error — so it's easy to spend several rounds rewriting the expression when the expression was already right. One project spent 4 reconcile rounds cycling `LongIntegerToText`/`IdentifierToText`/casts before checking the data and finding the FK columns were simply null in the seed. | After the **first** comparison-expression fix produces no observable change, stop varying the expression and check the raw data instead: open the entity in the ODC Portal Data view (or ask Mentor to report the actual FK column values for a specific record) before writing a second expression variant. If the FK is null/orphaned, the fix belongs in whatever action creates/seeds that record, not in the aggregate reading it. |
 | Native `<select>` options render with light/white background and hard-to-read text in an otherwise dark-themed app, even though the closed field is themed correctly | Most browsers render a plain `<select>`'s open options popup with browser/OS-native colors, ignoring the page's own dark-theme CSS — only the closed control can be reliably restyled. If the option text color was written assuming a dark background (a light gray meant to sit on a dark card), the result is light-gray-on-white: technically styled, practically illegible. | Set an explicit **dark** text color on `<option>` elements wherever the app uses a plain select on a dark theme — don't assume the closed field's styling carries into the popup. Two things are effectively uncontrollable across browsers and not worth a further reconcile round once confirmed: the popup's own background color, and the highlight color of the currently-selected row — these are genuine platform ceilings, not an unfixed prompt. |
 | 3 diagnosis rounds in a row each report the code as correct — a different, unconfirmed theory each time — and the published behavior never changes | A diagnosis-only request (no code change) can come back detailed, specific, and self-assured, while still being wrong: it describes the model as it exists, reasons plausibly about what the runtime SHOULD do, and stops short of actually proving what the runtime DOES do. Each round rules out the previous round's theory without confirming its own, so the loop can continue indefinitely with the app never changing, because no round ever tests its own conclusion against the actual published output. A grouped chart displaying the same wrong label under 3 different explanations (a join fanning out rows, a type coercion silently failing at runtime, "the publish must not have taken effect") in 3 consecutive rounds, with the live screen showing byte-for-byte identical output each time, is the shape of this — not a harder bug, a stalled diagnostic loop. | After roughly 2-3 diagnosis rounds on the same bug produce no visible change, stop asking for another diagnosis and switch to a prescriptive rewrite that eliminates the entire suspect code path, rather than editing it again: state the new approach directly (e.g. "carry Year and Month as two separate integers from the source, never combine them into one value and decompose it back later") so the exact prior root cause stops mattering — the new code doesn't go through that path at all. Confirm success against the actual rendered output, not against a description of what the new code is supposed to do. |
-| A prompt asks Mentor to add a new visibility/enabled condition to a UI element that already has one (e.g. "hide these buttons when `X`," on buttons that were already hidden when `IsReadOnly`) — the new condition works exactly as asked, but the *old* one is gone, and the element is now interactive in a state that used to correctly lock it down | Mentor implements "add condition X" by writing X as the element's new (sole) visibility/enabled expression, not by ANDing X onto whatever expression was already there — it satisfies the literal ask without checking what the property already contained. This is invisible in the fix's own target state (a read-only record was never part of that prompt's test scenario) and only surfaces in a *different* state the prompt never mentioned, so it reads as unrelated until someone re-checks that other state specifically. One project's fix that branched a checklist item's answer buttons on `Peso = 0` (to swap the option set for one special item) silently un-did the same buttons' existing "hidden when the record is Finalizada" rule for every item — caught only because the wave's own test suite (not manual verification) re-ran the read-only case from an earlier wave. | When a prompt adds a new condition to an element that already has one, state explicitly what the two must do together — "combine with the existing read-only rule; keep it hidden when read-only regardless of X, and split only on X when not read-only" — and name the existing condition instead of trusting Mentor to preserve it unasked. After any such fix, don't just verify the new condition's own target case: re-run the state that was already correct before the fix (here, opening a Finalizada record) to confirm it is still correct, ideally via the existing automated test for that state rather than a fresh manual click-through, which is exactly what caught this one. |
+| A prompt asks Mentor to add a new visibility/enabled condition to a UI element that already has one (e.g. "hide these buttons when `X`," on buttons that were already hidden when `IsReadOnly`) — the new condition works exactly as asked, but the *old* one is gone, and the element is now interactive in a state that used to correctly lock it down | Mentor implements "add condition X" by writing X as the element's new (sole) visibility/enabled expression, not by ANDing X onto whatever expression was already there — it satisfies the literal ask without checking what the property already contained. This is invisible in the fix's own target state (a read-only record was never part of that prompt's test scenario) and only surfaces in a *different* state the prompt never mentioned, so it reads as unrelated until someone re-checks that other state specifically. One project's fix that branched a checklist item's answer buttons on `Weight = 0` (to swap the option set for one special item) silently un-did the same buttons' existing "hidden when the record is Finalized" rule for every item — caught only because the wave's own test suite (not manual verification) re-ran the read-only case from an earlier wave. | When a prompt adds a new condition to an element that already has one, state explicitly what the two must do together — "combine with the existing read-only rule; keep it hidden when read-only regardless of X, and split only on X when not read-only" — and name the existing condition instead of trusting Mentor to preserve it unasked. After any such fix, don't just verify the new condition's own target case: re-run the state that was already correct before the fix (here, opening a Finalized record) to confirm it is still correct, ideally via the existing automated test for that state rather than a fresh manual click-through, which is exactly what caught this one. |
 
 ## 5. Anti-patterns
 

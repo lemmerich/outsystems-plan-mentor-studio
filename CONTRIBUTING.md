@@ -166,7 +166,7 @@ Keep it at the top of `CHANGELOG.md`. Example:
 
 ### Added
 - Automatic context pack generation from wave table
-- Support for fidelidade field in spec-wave template
+- Support for fidelity field in spec-wave template
 
 ### Fixed
 - Data-test attributes now preserved in HTML pruning
