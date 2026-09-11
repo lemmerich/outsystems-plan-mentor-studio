@@ -1215,6 +1215,573 @@ CORRETO (não apenas "algum") é o retornado.
 
 ---
 
+## Recipe: any CSS fix touching the platform shell's sidebar/header/nav containers
+
+**When to use:** before publishing any fix that edits `.aside-navigation`,
+`.header`, `.app-menu-content`, `.main`, or any other container that is
+part of the OutSystems UI default responsive shell (not just before a fix
+that explicitly targets "the sidebar" — a padding/spacing fix on the
+sidebar container qualifies too).
+
+**The trap this avoids:** the platform shell ships a working responsive
+pattern (fixed sidebar at desktop widths, off-canvas drawer + hamburger
+toggle at narrower widths) implemented across several coupled containers.
+A CSS change scoped to one of them, verified only at the width it was
+written for, can silently break the *other* piece of the same system —
+the off-canvas drawer rendering full-viewport at every width including
+desktop, or the hamburger toggle's hosting `<header>` staying `display:
+none` at every width — with zero validation errors and no visible sign at
+the original test width. See `prototype-to-widgets.md` #30 (and #34, #42).
+
+**Prompt block (append to any prompt editing these containers):**
+
+```
+This change touches the platform's responsive shell (sidebar, header,
+off-canvas menu). Change ONLY the properties listed above. The shell's
+responsive behavior must stay intact at every width:
+1. Desktop (>= 1280px): the sidebar renders normally, expanded and
+   fixed; the off-canvas menu (drawer) and its hamburger button stay
+   hidden.
+2. Tablet/mobile (~768px or less): the fixed sidebar disappears; the
+   hamburger button appears and is clickable; clicking it opens the
+   drawer with every menu item; closing it restores the normal screen.
+Do not add or change any width, display or position rule on
+.app-menu-content, .aside-navigation or the header beyond what this
+prompt lists. To resize the menu, change --side-menu-size only.
+```
+
+Mentor never renders the page, so it cannot check either case itself —
+the verification below, at both widths, is yours.
+
+**Post-publish verification (browser console, run at both widths):**
+
+```js
+// desktop: expect display:flex-or-block on the sidebar, drawer NOT covering the viewport
+const drawer = document.querySelector('.app-menu-content');
+const header = document.querySelector('header.header, .header');
+JSON.stringify({
+  drawerRect: drawer && drawer.getBoundingClientRect(),
+  drawerDisplay: drawer && getComputedStyle(drawer).display,
+  headerDisplay: header && getComputedStyle(header).display,
+  innerWidth: window.innerWidth
+});
+```
+A drawer `rect` covering the full viewport at a desktop width, or a
+`headerDisplay` of `"none"` at a narrow width, is the fix regressing the
+shell's other half — not evidence the original fix needs to be stronger.
+
+---
+
+## Recipe: an edit-toggle (Edit/Save/Cancel) that must REPLACE the view, not append the form beside it
+
+**When to use:** any time a card/row has both a read-only view and an edit
+form triggered by the same "Edit" action.
+
+**The trap this avoids:** the edit action inserts the form as additional
+content instead of swapping it in — every field shown in both states
+(a header value, a badge) renders twice/three-times at once, and the
+underlying view stays fully visible and interactive while the form is
+open. See `prototype-to-widgets.md` #32.
+
+**Prompt block:**
+
+```
+When clicking "Edit" on this card/row, the view-mode content
+(header, badges, static text) must be ENTIRELY REPLACED by the edit
+form — no view-mode element should still be visible at the same time as
+the form. On Save or Cancel, the form is replaced back by the updated
+view (or the original, in the Cancel case).
+```
+
+**Post-publish verification (browser console, right after clicking "Edit"):**
+
+```js
+const card = document.querySelector('[data-test="..."]'); // the card/row
+JSON.stringify({
+  formFieldCount: card.querySelectorAll('input, select, textarea').length,
+  hasLeftoverViewText: !!card.querySelector('.item-code, .badge, .pill') // adjust selectors to the view-mode classes
+});
+```
+If `hasLeftoverViewText` is true while form fields are also present, the
+handler is appending, not replacing.
+
+---
+
+## Recipe: verifying a `data-test` on a repeated list actually landed on each item, not the wrapping list
+
+**When to use:** any time a `data-test` is added to identify individual
+items in a rendered list/table (rows, cards, tiles) — always, not just
+when something seems wrong.
+
+**The trap this avoids:** the attribute ends up on the list's own
+container element instead of each repeated item inside it. A query for
+it still finds "an element" (so a shallow check passes), but resolves to
+exactly 1 match regardless of how many items are rendered, with every
+item's text concatenated together — which can itself accidentally
+satisfy a loose text filter and hide the bug further. See
+`prototype-to-widgets.md` #37.
+
+**Prompt block:**
+
+```
+The data-test="<name>" attribute must be on EACH individual item of
+the list/table (one per row/card), not on the container wrapping them.
+After applying, confirm the number of elements with that data-test
+equals the number of rendered items, not 1.
+```
+
+**Post-publish verification (browser console):**
+
+```js
+const items = document.querySelectorAll('[data-test="<name>"]');
+JSON.stringify({ count: items.length, firstItemText: items[0] && items[0].textContent });
+```
+`count` should equal the expected number of rows/cards. If it's 1 and
+`firstItemText` looks like every item's text run together, the
+attribute is one DOM level too high.
+
+**The same trap can also go the other way:** some OutSystems table
+widgets (Table Records) refuse a `data-test` on the `<tr>` itself and
+land it on one or more `<td>` cells inside each row instead — a real
+platform limit, not a wording problem with the prompt. Counting the
+attribute directly then OVER-reports (a multiple of the row count, one
+per matching cell, not one per row) instead of collapsing to 1. A
+Playwright locator built as `page.getByTestId(name)` and treated as "one
+per row" silently miscounts in both directions depending on which trap
+applies — the fix for the over-count case is to never count the testid
+directly for row-level assertions: filter the actual `<tr>` elements
+that CONTAIN it instead — `page.locator('tr').filter({ has:
+page.getByTestId(name) })` — which resolves to real rows regardless of
+which DOM level the platform actually attached the attribute to.
+
+---
+
+## Recipe: idempotent seed action that must insert one specific missing record among several already-existing ones
+
+**When to use:** any "load demo data" seed action that gets extended in a
+later wave to add one more record to a set it already seeded earlier
+(e.g. an extra status value, an extra example row).
+
+**The trap this avoids:** an idempotency guard written as "if the FIRST
+record already exists, do nothing" (checking only one representative row,
+then inserting the whole batch) works correctly the first time the action
+ever runs, but permanently blocks any LATER addition to that same batch —
+once the first record exists, the guard's early-return skips the entire
+action body, including a new insert added afterward for a record that
+doesn't exist yet. Re-running the seed after the extension looks
+successful (no error, "idempotent" claim still technically true for the
+original 5 records) but silently never reaches the 6th.
+
+**Prompt block:**
+
+```
+"<SeedAction>" must stay idempotent when adding the record
+"<NewRecord>" to a batch that already existed. Do NOT use a batch-level
+guard ("if the first record already exists, stop everything") — that
+blocks any record added after the originals have already been seeded.
+Each record in the batch (including ones that already existed before
+this wave) must be checked and inserted INDIVIDUALLY by its natural key
+(e.g. an identifier) — with no batch-level "early return" that skips
+ones not yet checked.
+```
+
+**Verify after publish:** run the seed action a second time on a database
+where the original records already exist — the new record must appear.
+A seed that only "worked" the very first time it ever ran, before any
+records existed, hasn't proven this — always test the extension case.
+
+---
+
+## Recipe: a per-row visual style condition is correct but the row's click/navigation isn't gated by the same condition
+
+**When to use:** any list where only some rows should be interactive
+(clickable, navigable) based on a status/condition — not just styled
+differently.
+
+**The trap this avoids:** the CSS class or style expression that decides
+whether a row *looks* clickable (cursor, hover, background) can be
+perfectly correct — conditioned on the right field, verified by reading
+the expression back — while the actual click handler or row-click/
+navigation binding is wired unconditionally to every row, independent of
+that same expression. These are two separate bindings in the widget tree
+(a style/class property and an on-click/navigate action), and fixing one
+does not touch the other — a prompt asking only "make ineligible rows not
+look clickable" can get exactly that: correct styling, identical
+click-through behavior on every row.
+
+**Prompt block:**
+
+```
+In "<List>", the class/style that indicates a clickable row is
+already correctly conditioned on "<condition>" — but that's a visual
+property separate from the click/navigation behavior itself. Find WHERE
+the row's click/navigation is actually wired (a whole-row event, or
+each cell individually) and wrap it in the SAME "<condition>" — don't
+assume fixing the style also fixes the behavior; they're two different
+bindings on the widget.
+```
+
+**Verify after publish:** don't just inspect the CSS class name applied
+to each row — actually click a row that should NOT be interactive and
+confirm no navigation/action fires (URL unchanged, no new panel opens).
+A row correctly missing the "clickable" class can still have a working
+click handler underneath it; only clicking proves the negative case.
+
+**The same separation cuts the other way too:** a prompt asking a card
+or bar to "become clickable, with a hover/cursor affordance" can come
+back with ONLY the affordance done — `cursor: pointer` and a hover
+outline applied correctly to every target element, confirmed by reading
+computed CSS — while the actual click handler or navigation binding is
+completely absent underneath every single one of them, not just
+ungated. The visual half of "clickable" is the trivial, easily-verified
+part; the navigation logic is the entire point of the request and can be
+silently skipped while the prompt's guardrail about "add a hover
+affordance" reads as satisfied. Verify by clicking (not just inspecting
+`cursor` in computed styles) every element that's supposed to navigate,
+not only the ones that shouldn't.
+
+---
+
+## Recipe: a dropdown/select populated from a joined entity shows a generic placeholder label instead of the related record's name
+
+**When to use:** any dropdown, select, or list whose display label needs
+a field from an entity OTHER than the one the query's primary source is
+— e.g. a version picker showing the parent record's name, a foreign-key
+picker showing the referenced entity's title.
+
+**The trap this avoids:** a query/aggregate built against the entity
+that actually needs to be selected (a version, a foreign key row) can
+compile and run without ever joining the RELATED entity that holds the
+human-readable name — the dropdown then falls back to showing the
+record's own literal Id, a hardcoded static string, or a generic
+placeholder like "Item #N" instead of the name a user would recognize.
+This happened three separate times in one project (a Checklist picker, a
+Protocol picker, and a DevTools debug picker), each time because the
+query fetched the versioned/child entity alone without joining back to
+its parent for the label.
+
+**Prompt block:**
+
+```
+Dropdown "<X>" needs to show "<DisplayField>" (from the
+"<ParentEntity>"), not just the Id or a generic label from the record
+the query already fetches ("<ChildEntity>"). Join "<ChildEntity>" with
+"<ParentEntity>" in the query/aggregate that populates this dropdown and
+build the label from the real field (e.g. ParentEntity.Name + " · v" +
+ChildEntity.VersionNumber), not from a fixed value or the Id.
+```
+
+**Verify after publish:** read `[...select.options].map(o => o.text)` in
+the browser — every label must be a real, distinguishable name, never a
+literal "0", the entity's own type name repeated for every option, or a
+generic "Item #N" placeholder that doesn't vary meaningfully by record.
+
+---
+
+## Recipe: a "success" message shown without confirming the write actually happened
+
+**When to use:** any action (especially a DevTools/debug simulation
+button, but also any regular save/update flow) that shows a static
+success message after calling a create/update node.
+
+**The trap this avoids:** a flow that calls an update/create node and
+then unconditionally shows "Saved successfully"/"Complete" regardless of
+whether that node found/changed anything degrades into the exact same
+failure mode as no error handling at all — except it now actively lies,
+which is worse for debugging than silence, because it stops anyone from
+suspecting the write failed. This compounds badly with any bug that
+makes a lookup/filter match zero rows (see the Identifier/Text gotcha in
+`backend-and-data-gotchas.md` #15) — the update silently changes 0 records,
+and the success message papers over it completely.
+
+**Prompt block:**
+
+```
+After "<WriteAction>", don't show the success message
+unconditionally. Fetch the affected record again and confirm the
+expected field ("<Field>") actually changed to the intended value before
+displaying "<success message>" — if it didn't change, show a specific
+error instead ("Record not found or not changed"), never the success
+message.
+```
+
+**Verify after publish:** trigger the action, then independently re-fetch
+the affected record (a fresh page load, a direct API/network response
+check) — the field must actually hold the new value. A success message
+alone is not evidence; this recipe exists specifically because it was
+observed lying twice in the same wave, once for each of two separate
+bugs it was masking.
+
+---
+
+## Recipe: a computed average that legitimately equals zero renders as absent ("—")
+
+**When to use:** any indicator that shows a placeholder ("—", "N/A",
+empty) when there's "no data," computed from an average, sum, or other
+aggregate over a filtered set of records.
+
+**The trap this avoids:** the display condition decides "no data" by
+checking whether the COMPUTED RESULT is truthy/positive (`If(Average > 0,
+Average, "—")`) instead of whether there were any CONTRIBUTING RECORDS at
+all (`If(Count > 0, Average, "—")`). A result that legitimately averages to
+exactly `0` — e.g. every matching record happens to have a zero-day gap
+between two dates, a 0% rate, a balance of 0 — is then indistinguishable
+from "nothing matched the filter," and gets hidden behind the same
+placeholder as genuine absence of data. The two states have opposite
+meanings (a rate of 0% is a real, reportable fact; "no data yet" is a
+different fact) and collapsing them produces a value that reads as
+missing when it is actually the most interesting possible number.
+
+**Prompt block:**
+
+```
+The display condition for "<Indicator>" must decide "—" based on
+WHETHER AT LEAST 1 record contributes to the calculation (the same count
+"<RelatedIndicatorThatAlreadyCountsCorrectly>" already uses), never
+based on whether the average/sum RESULT itself is greater than zero. A
+result equal to 0 is a real value and must display normally when there
+are records — "—" is only for when there are no records at all.
+```
+
+**Verify after publish:** find or construct a case where every matching
+record's value happens to be exactly 0 — confirm the indicator shows the
+real "0" (formatted normally), not "—". Separately confirm the actual
+zero-record case still shows "—".
+
+---
+
+## Recipe: a combined sort/group key decomposed back via arithmetic for display is fragile
+
+**When to use:** any report/chart that groups records by a compound
+period (year+month, year+week) using a single combined value for
+grouping uniqueness (e.g. `Year(Date)*100 + Month(Date)` → `202511`).
+
+**The trap this avoids:** grouping by a single combined integer is a
+reasonable way to guarantee one bucket per period, but then trying to
+recover the separate year and month back out of that combined value via
+arithmetic (`combined - (combined/100)*100` for the month, `combined/100`
+for the year) at DISPLAY time is a second, independent place the same
+information has to round-trip correctly through integer division,
+truncation, and type conversions — and it can silently fail (every row
+falling through to the same "else" branch of a month-name lookup, for
+example) while the grouping itself remains completely correct. This is
+easy to misdiagnose as a query/grouping bug, because the counts per
+group are right — only the LABEL is wrong — and the decomposition
+expression can look correct on paper while producing a wrong result at
+runtime, resisting several rounds of diagnosis because "the code is
+right" isn't the same as "the code produces the right output."
+
+**Prompt block:**
+
+```
+For "<ChartOrReport>", stop deriving month/year back from the
+combined value used for grouping. Compute and carry Year and Month as 2
+SEPARATE integer values from the source (Year(Date), Month(Date)), never
+combined into a single integer and then decomposed via subtraction/
+division/multiplication. Use those 2 separate values to build the
+label text (e.g. month name + "/" + year) and, if a single value is
+still needed to guarantee 1 group per period, keep it only as the
+grouping key — never as the source of the displayed text.
+```
+
+**Verify after publish:** with at least 2 different periods in the
+seeded data, confirm the report shows 2 distinct, correctly-labeled
+rows — not the same label repeated with different counts (a strong
+signal the decomposition is producing a constant fallback value for
+every row, not that rows are being duplicated).
+
+---
+
+## Recipe: an empty/absent filter parameter is treated as "match empty value" instead of "no filter"
+
+**When to use:** any screen/aggregate whose filter condition is built as
+`(Param = "" or Field = Param)` (or the URL-parameter equivalent) to mean
+"no filter when Param is empty, otherwise filter by it."
+
+**The trap this avoids:** one specific caller of that filter — often a
+"show everything, no filter" entry point built alongside several other
+callers that DO pass a real value — can end up passing an empty string
+explicitly as the parameter instead of omitting it, or the "no filter"
+branch of the OR condition can be written slightly differently from how
+every other working filter on the same aggregate handles it. The
+working cases (a real Status value, a real Classification value) mask the
+bug completely, because they never touch the "is this empty" branch at
+all — only the specific "no filter" case reaches it, and it fails
+silently: 0 rows, no error, dropdowns still showing the correct "All"
+default.
+
+**Prompt block:**
+
+```
+Confirm that "<Filter>"'s "no filter" path really does fall into
+the "(Param = "" or Field = Param)" condition and results in ALL
+records — not zero. Explicitly test this case (not just the cases with
+a real value selected), comparing against opening the screen with no
+URL parameter at all: both must show exactly the same complete list.
+```
+
+**Verify after publish:** open the screen via its "no filter" entry
+point (a link/card meant to show everything) and via its bare URL with
+no parameters at all — both must show the identical, complete list. If
+the "no filter" entry point shows an empty list while the bare URL shows
+everything, the empty-parameter case is being treated as an active
+filter for an empty value.
+
+---
+
+## Recipe: fixing the login-success redirect for a role-gated Home screen doesn't fix every OTHER path back to it
+
+**When to use:** any app where different roles land on different
+screens after login, and one screen (often the one that used to be
+public, or the first screen ever built) is still the module's own Home
+screen.
+
+**The trap this avoids:** when an app becomes role-gated, the screen
+that used to be the shared entry point for everyone typically stays
+configured as the module's Home screen (served whenever the bare app
+URL is opened with no specific path). A fix aimed at "redirect each role
+to the right screen after login" can correctly patch the login SUCCESS
+action's own navigation — Reviewer → SourceRecords, Administrator → Checklist —
+and verifiably work for that one path, while every OTHER way of reaching
+the bare module root (reloading the page, opening a saved bookmark,
+typing the base URL, a link that points at the module root instead of a
+specific screen) still hits the Home screen directly, which still isn't
+role-aware. A role without access to that Home screen gets a working
+login followed immediately by a lockout on the very next reload —
+looking like the login itself is broken, when the actual defect is one
+level up, in what the bare module root does for an already-authenticated
+user.
+
+**Prompt block:**
+
+```
+Role-based redirection was only fixed in the login SUCCESS ACTION —
+but that doesn't cover visiting the app's root while already
+authenticated (reloading the page, opening a bookmark, typing the base
+URL), which still lands directly on the module's Home screen, with no
+redirection at all. Make the module's own Home screen role-aware —
+reusing the SAME role→screen mapping already used in login success, not
+a second, separate logic path — or replace Home with a lightweight
+screen whose only job is to redirect by role before the old Home (or
+either one) runs its own access check.
+```
+
+**Verify after publish:** with an already-valid session (don't log in
+again), navigate to the bare module root directly — not a specific
+screen path. Every role must land on a screen it can actually open, not
+just right after logging in, but on every later visit to that same bare
+URL during the same session.
+
+---
+
+## Recipe: an E2E test forcing a state change must read the CURRENT value first, never alternate between 2 fixed options
+
+**When to use:** any test that needs to click a different option than
+whatever is currently selected, on a control whose state is shared
+across test runs (no reset action exists, or the same seeded record is
+reused by other waves' tests).
+
+**The trap this avoids:** a test written as "click option A if option B
+looks selected, else click option B" (alternating between exactly 2
+hardcoded indices) works the first time, but the target's real current
+state depends on every earlier test run that ever touched the same
+shared record — including runs from other waves, or the same wave run
+twice without a reset. When the current state happens to already be
+whichever option the test was about to click, the click is a genuine
+no-op (correct app behavior: clicking an already-selected value doesn't
+re-trigger a write) and the test's own assumption that "this click
+causes the state to change" is silently false — producing a confusing
+failure that looks like the feature stopped tracking the change, when
+the test's own fixture assumption was just wrong for this run.
+
+**Prompt block (for the TEST file, not the Mentor prompt):**
+
+```
+Before clicking to force a change, read which option is SELECTED
+RIGHT NOW (e.g. via the "selected-*" CSS class the app already uses to
+mark the current one) and always pick an option DIFFERENT from it —
+never alternate between 2 fixed indices, which may coincide with a
+state already saved from a previous run. A robust approach: pick the
+next index in sequence from the current one (`(current + 1) %
+totalOptions`), guaranteeing a real change regardless of the starting
+state.
+```
+
+**Verify:** run the test twice in a row without any reset between runs
+— it must pass both times, proving the selection logic doesn't depend
+on a specific starting state.
+
+---
+
+## Recipe: Playwright `baseURL` without a trailing slash breaks relative `page.goto()` sub-paths
+
+**When to use:** any Playwright config whose `baseURL` points at an app
+mounted under a sub-path (e.g. `https://host/ModuleName`, not just
+`https://host`).
+
+**The trap this avoids:** relative URL resolution treats a `baseURL`
+without a trailing slash as a "file," not a "directory" — `page.goto('Login')`
+against `baseURL: 'https://host/ModuleName'` resolves to
+`https://host/Login`, silently dropping `/ModuleName` entirely, while
+`page.goto('')` (empty string) still works fine because it resolves to
+the `baseURL` verbatim with nothing appended. This makes the bug
+inconsistent and confusing: some navigation patterns in the same suite
+work, others land on a completely different, usually 404 or wrong-app,
+page — and the symptom (a blank page, or a timeout waiting for an
+element that was never going to be there) looks like an app bug or a
+timing issue, not a URL-resolution one.
+
+**Prompt block (for the test config, not the Mentor prompt):**
+
+```
+Normalize baseURL to always end with "/" before using it in
+`use.baseURL`, regardless of how the environment variable defining it
+was written:
+  const rawBaseURL = process.env.MY_BASE_URL || 'http://localhost:8080';
+  const baseURL = rawBaseURL.endsWith('/') ? rawBaseURL : rawBaseURL + '/';
+This guarantees that any relative `page.goto('SomePath')` resolves
+correctly against the app's sub-path, not against the domain root.
+```
+
+**Verify:** with the fix in place, `page.goto('AnyScreenName')` should
+print (via `page.url()` after navigation) a URL that still contains the
+app's sub-path — not just the bare domain.
+
+---
+
+## Recipe: `browser.newContext()` inside a Playwright project with `storageState` configured inherits it by default
+
+**When to use:** any test that needs a genuinely anonymous/unauthenticated
+browser context, written inside a Playwright project whose `use.storageState`
+points at a saved authenticated session.
+
+**The trap this avoids:** `browser.newContext()` called with no arguments
+does not produce a blank context — it inherits the project's own `use`
+options, including `storageState`, because those options are the
+project-level defaults for any context the `browser` fixture creates,
+not just the default `page` fixture's own context. A test meant to prove
+"this screen requires login" or "this behavior differs with no session"
+can pass a fully authenticated context to itself and never notice,
+because the resulting page renders successfully — just under the wrong
+identity, contradicting the test's own name and assertions in a way that
+isn't obvious from the passing/failing status alone.
+
+**Prompt block (for the test file, not the Mentor prompt):**
+
+```
+Whenever a test needs a genuinely anonymous session inside a project
+that already sets storageState, explicitly pass
+`browser.newContext({ storageState: undefined })` — never assume
+`browser.newContext()` with no arguments produces a blank session when
+the project already has storageState configured.
+```
+
+**Verify:** inside such a context, read something that only an
+authenticated session would show (e.g. the logged-in user's name in a
+sidebar widget) — it must be genuinely absent, not just untested.
+
+---
+
 ## When this file isn't enough
 
 These are the recurring patterns this project's sessions have actually hit

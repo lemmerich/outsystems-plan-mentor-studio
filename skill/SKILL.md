@@ -1,6 +1,6 @@
 ---
 name: outsystems-plan
-version: "0.12.1"
+version: "0.13.0"
 description: >
   Guides you from a blank folder to a complete OutSystems build plan through
   a short interactive interview. Reads your spec and reference screens, proposes
@@ -190,7 +190,10 @@ This is a standing check, every wave, not a one-time planning-phase step.
 1. Prototype    — build or evolve the screen(s) in the living prototype (HTML)
 2. Approve      — get the user's explicit sign-off on the prototype change
 3. Execute      — update the wave spec from the approved prototype, then
-                  fire Mentor with box-model facts in the prompt; publish
+                  fire Mentor with box-model facts in the prompt; publish.
+                  Before firing, check the prompt against "Prompt content
+                  rules" (after the guardrails in Step 6) — self-contained,
+                  known pitfalls named, CHANGES list self-consistent
 4. Compare      — open the published screen and the approved prototype
                   side by side; list every visual/behavioral difference —
                   don't stop at the first one found. When the wave
@@ -520,7 +523,8 @@ One `tests/wN.spec.ts` per wave, with test IDs matching the spec (`W2-01`, `W2-0
 
 Key rules:
 
-- `playwright.config.ts` must set `testIdAttribute: 'data-test'` — Playwright's default is `data-testid` which OutSystems never sets.
+- `playwright.config.ts` must set `testIdAttribute: 'data-test'` — Playwright's default is `data-testid` which OutSystems never sets. It must live **inside `use: {}`**, not at the config's top level — a top-level `testIdAttribute` is silently ignored (no error, no warning) and every `getByTestId(...)` then matches nothing. Easy to reintroduce by hand-writing a config instead of copying `templates/playwright.config.ts`; when in doubt, run one spec that calls `getByTestId` and confirm it finds the element before writing the rest of the suite.
+- `baseURL` must end with `/` — an ODC app lives under a sub-path, and without the trailing slash a relative `page.goto('Screen')` resolves against the domain root (the template normalizes it; see `recipes.md` → "Playwright `baseURL` without a trailing slash").
 - `fullyParallel: false`, `workers: 1` — waves share one environment.
 - `reporter` must include `['html', { open: 'never', outputFolder: 'playwright-report' }]` alongside `['list']` — `list` alone only prints to the terminal, and terminal output is not evidence once the turn scrolls away. The HTML report (with screenshots and traces on failure) is what makes "5 passed" a checkable claim instead of a summary someone has to trust. It's overwritten by the next run of the same project — if the user wants a specific run preserved across future runs, that's a separate ask (copy the folder, or init git and commit it), not something to assume.
 - All locators and all verbatim messages live in `support/selectors.ts`. A UI rename is one edit.
@@ -532,10 +536,13 @@ Key rules:
 - `LayoutSideMenu` sidebar entries have ARIA role `menuitem` inside `menubar`, not `link`.
 - The platform `Upload` widget's label is not wired to its `<input>` — use `input[type="file"]` by position, not `getByLabel`.
 - `Title` widget renders a `<span>`, not a heading — `getByRole('heading')` never matches it.
-- `TableRecords` `data-test` attributes land on `<td>` cells, not `<tr>` — locate rows via `page.locator('tr').filter({ hasText })`.
+- `TableRecords` `data-test` attributes land on `<td>` cells, not `<tr>` — and this is a **real platform limitation, not a prompt-wording gap**: ODC exposes no `data-test`/Extended Properties slot on the row a `TableRecords` widget generates, only on its cells. Confirmed by asking Mentor directly after two fix prompts explicitly requesting the `<tr>` placement failed; its answer named the only two options: (a) keep `data-test` on a cell and reach the row from the test (`page.locator('tr').filter({ has: page.getByTestId(name) })`, or `.filter({ hasText })`), or (b) replace `TableRecords` with a `List` block (its `<div>` rows accept `data-test` directly) — a much larger change that is disproportionate just to fix a selector. **Default to (a)** unless the wave already has an independent reason to prefer a `List`. Don't spend a fix round asking for the `<tr>` placement; counting the testid directly over-reports (one per matching cell, not one per row).
 - A data-driven dropdown defaults to its placeholder — always call `selectOption({ label })` before asserting the happy path.
 - Status badges bound to the wrong column show the English `Label` instead of the PT-BR `LabelPtBr` — assert the exact localized string.
-- `getByRole('radio'/'checkbox'/'button', { name })` matches by substring by default — two options where one's label is a prefix of another's (e.g. "Não" / "Não se aplica") resolve to 2 elements and throw a strict-mode violation. Pass `{ name, exact: true }` whenever any two option labels in the same group could overlap as substrings.
+- `getByRole('radio'/'checkbox'/'button', { name })` matches by substring by default — two options where one's label is a prefix of another's (e.g. "Não" / "Não se aplica") resolve to 2 elements and throw a strict-mode violation. Pass `{ name, exact: true }` whenever any two option labels in the same group could overlap as substrings. The same trap applies to `.filter({ hasText: 'X' })` on any locator — a status pair like "Ativa"/"Inativa" (or "Active"/"Inactive") collides the same way (`hasText: 'Ativa'` also matches "Inativa"); use a regex with a negative lookbehind (`/(?<!In)ativa/i`) or exact-text semantics whenever one label could be contained inside another.
+- A `data-test` meant to identify each item of a repeated list can land on the list's own wrapping container instead of each item — a query for it still finds "an element," so a shallow check passes, but it resolves to exactly 1 match (not N) with every item's text concatenated together. Verify the resolved count equals the expected item count before trusting the selector (see `prototype-to-widgets.md` #37; the `TableRecords` bullet above is the opposite, over-counting case).
+- A test that must force a state change on a shared, un-reset record must read the CURRENT value first and pick something different — never alternate between two hardcoded options, which can coincide with a state left by an earlier run.
+- Inside a Playwright project that sets `storageState`, `browser.newContext()` with no arguments inherits that authenticated session. A test that needs a genuinely anonymous session must pass `browser.newContext({ storageState: undefined })` explicitly.
 - A helper function that clicks a button which triggers navigation must wait for that navigation to actually land (`page.waitForURL(...)` or wait for a locator unique to the destination screen) before returning — a caller that does `const url = page.url()` immediately after calling the helper can capture the pre-navigation URL if the helper returns before the redirect completes, then silently operate on the wrong screen for the rest of the test.
 - When manually verifying a reactive OutSystems screen's behavior via browser automation (not through Playwright's own `.click()`, which is a trusted event) — e.g. probing a bug hypothesis with `element.click()` or dispatching synthetic `input`/`change` events via `page.evaluate` — expect those synthetic events to update the DOM's local `checked`/`value` state but **not** reliably fire the framework's own reactive `OnChange` binding. A synthetic click can look like a repro failure (or success) that has nothing to do with the app: confirm any finding from synthetic interaction with a **real** click (via a genuine pointer-driven click tool, or Playwright's own `.click()`) before reporting it as a bug — this session got one false "still broken" reading this way, retracted only after the same interaction via a real click worked correctly.
 - When a wave's prototype introduces a new dynamic visual block (counters, computed labels, status pills) that a test will need to assert on, put explicit `data-test` attribute names for its pieces directly in the Mentor prompt. Without it, Mentor names elements after its own internal widget IDs (e.g. `#ClassificacaoPill`, `.audit-resumo-score-val`) that only surface after the fact via DOM inspection (`document.querySelectorAll`) — working, but an avoidable extra round-trip.
@@ -644,7 +651,7 @@ updated as waves execute. It contains:
    diff against the prototype (not just the checklist) → publish → ask
    about tests
 6. **Mentor prompt guardrails** — prepended to every Mentor prompt, every wave
-7. **Static gate checklist** — entity count, action count, screen count, zero hex literals, no unauthorized roles, **screen matches the approved prototype screenshot** (layout, grouping, negrito/weight, dynamic vs static text — verify by opening the published screen and comparing, not by re-reading the spec). **For any screen rendering a repeated list of rows with a selectable control per row** (radio group, dropdown, checkbox — an audit checklist, a survey, a set of per-item toggles): interact with the control in **two different rows**, not just one, and confirm the first row's selection survived the second row's click. A single-row test cannot catch a control accidentally bound to one shared screen variable instead of a per-row list attribute — that bug makes every row mirror whichever row was clicked last, and looks completely correct if only one row is ever touched during verification (see `prototype-to-widgets.md` #15).
+7. **Static gate checklist** — entity count, action count, screen count, zero hex literals, no unauthorized roles, **screen matches the approved prototype screenshot** (layout, grouping, negrito/weight, dynamic vs static text — verify by opening the published screen and comparing, not by re-reading the spec). **For any screen rendering a repeated list of rows with a selectable control per row** (radio group, dropdown, checkbox — an audit checklist, a survey, a set of per-item toggles): interact with the control in **two different rows**, not just one, and confirm the first row's selection survived the second row's click. A single-row test cannot catch a control accidentally bound to one shared screen variable instead of a per-row list attribute — that bug makes every row mirror whichever row was clicked last, and looks completely correct if only one row is ever touched during verification (see `prototype-to-widgets.md` #15). **If the wave created a new screen, check that the sidebar/menu item meant to reach it actually points there** — a nav shell built early (before every screen it links to exists) commonly ships every link pointing at whatever placeholder existed at the time, and nothing re-flags the stale link once the real screen is built. This is a standing check on every wave that adds a screen, not a one-time fix.
 8. **Failure playbook** — what to do when things go wrong
 9. **Timing log** — one row per milestone, cumulative across waves
 10. **Never list** — absolute prohibitions
@@ -704,7 +711,59 @@ GUARDRAILS (apply to every screen and action in this wave):
    screenshot and easy to skip. Extract these facts from the prototype's own
    CSS while writing the wave spec (Step 3's Screen layout section), not
    from eyeballing the rendered image a second time.
+
+10. Every screen this wave creates must state its access level explicitly —
+    `Everyone` (public, no login) or the specific role(s) required. ODC
+    creates new screens as login-required unless told otherwise, so a
+    public screen that the prompt never calls public gets a login wall
+    (and every E2E test without a saved session fails on it).
 ```
+
+### Prompt content rules
+
+Check every Mentor prompt against these before firing — they are about
+what the prompt *says*, where the guardrails above are about what Mentor
+must *do*.
+
+- **Self-contained, every time.** Mentor has no memory of earlier waves,
+  sessions or fix rounds, and never reads the project folder. A wave
+  number, a spec filename, a prior fix's name, a test file or a test-case
+  ID inside the prompt ("already built in W1," "same pattern as W3's
+  screen," "this makes W7-02 pass") reads correctly to a human and tells
+  Mentor nothing. Restate every fact as the current state of the app:
+  not "reuse the extraction action from W1" but "an action
+  `ExtractDocumentText(File Binary) → Text` already exists in this app —
+  reuse it, do not recreate it"; not "same upload pattern as before" but
+  the pattern itself, in full. Describe expected behavior as what to
+  click and what should appear, never as "the suite passes."
+- **Name the pitfalls that apply.** Walk the CHANGES list against Step 4's
+  "Known OutSystems selector pitfalls" and the three reference lessons
+  files, and name in the prompt exactly which ones apply to this wave's
+  screens — a generic nearby-sounding instruction is not the same fix.
+  Two lookalikes need different handling: a list item's `data-test`
+  landing on the wrapping container is fixed by prompt wording; a
+  `TableRecords` row's `data-test` landing on its `<td>` is a platform
+  limit that no wording fixes — write the test around it instead.
+- **Check the CHANGES list against itself.** (a) If the data model is
+  meant to "close" in this wave, check every field a LATER wave's spec
+  assumes exists on an entity this wave creates (a score, a
+  classification, anything a future screen shows or a seed row needs) —
+  add it now as optional rather than discovering the gap when a seed has
+  nowhere to put a value. (b) For every validation/guard action the list
+  creates, the same list must say which action calls it and at what
+  point — an action that exists but is never wired in publishes cleanly
+  and simply never fires.
+- **Bake proven patterns into the first prompt, not a later fix.** A
+  pattern already established in the project belongs in the original
+  prompt of every new wave that creates the same kind of element — e.g.
+  every button wired to a server action gets a loading state (spinner
+  inside the button, `disabled` while the call is in flight) stated in
+  CHANGES the first time, the same way guardrail 1 is restated every
+  wave. One line in the prompt is cheaper than a fix round.
+- **Adding a condition to an element that already has one:** name the
+  existing condition and say how the two combine — Mentor replaces the
+  old `Visible`/`Enabled` expression rather than ANDing onto it (see
+  `prototype-to-widgets.md` #39).
 
 ---
 

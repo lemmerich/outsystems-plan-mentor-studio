@@ -139,6 +139,48 @@ harness call — not the calling app's summary of what it did with that
 output, and not an assumption about what the agent "should" return based
 on its prompt/spec.
 
+## Recipe: a cross-asset request/response is a Service Action out and the owner's own public event back
+
+**When to use:** any wave where one asset asks another to do work and
+needs to hear back when it's done — a web app handing a document to an
+agent, an app kicking off a job owned by a separate asset. The natural
+design is a symmetric pub/sub pair ("the web app publishes a request
+event, the agent publishes a result event"). Only half of that is
+implementable.
+
+**The principle:** ODC's node for firing a global event
+(`ITriggerGlobalNode.Event`) only accepts a **local** event of the same
+asset — no asset can trigger another asset's event. So:
+- **Request leg = a Service Action**, exposed by the asset that does the
+  work (input: whatever it needs). It must return immediately, before
+  the actual processing finishes, so the caller never blocks waiting on
+  an LLM or a long job.
+- **Completion leg = an event owned and fired by the asset that did the
+  work**, triggered locally when its processing finishes. The caller's
+  only role is a Global Event Handler subscribing to it; its screen shows
+  a "processing" state until that event arrives.
+- **Both must be set to Public explicitly.** ODC creates events (and
+  Service Actions) as private to their own asset by default. A private
+  event publishes cleanly with no error, and the gap only surfaces later,
+  in the *consuming* asset's Mentor session, as "this event doesn't
+  exist" — which reads like it was never built.
+
+**How to apply:**
+- In the working asset's prompt: name the Service Action and its contract
+  ("returns immediately, does not wait for the model"), name the
+  completion event and its parameters, and say "set both to **Public**."
+- In the caller's prompt: it *calls* that Service Action directly and
+  *subscribes* to that event — never "publishes an event to" the other
+  asset for the request leg.
+- Build and publish the working asset first; the caller can only
+  reference what is already published.
+
+**Verify:** after publishing the owning asset, confirm the consuming
+asset can actually see and reference both the Service Action and the
+event. If the consuming session still reports either as missing right
+after the visibility fix, re-check that the owning asset was published,
+not just saved — the consumer reads published dependency metadata.
+
 ## When this file isn't enough
 
 This file holds structural/asset-boundary principles, not UI fixes or
